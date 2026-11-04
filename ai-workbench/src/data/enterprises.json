@@ -1,0 +1,41 @@
+[
+  {
+    "id": "spring-tea",
+    "name": "云岭春茶",
+    "industry": "高山明前春茶",
+    "location": "浙江 · 安吉",
+    "tagline": "把山间第一口春意，送到城市日常",
+    "accent": "#8da982",
+    "materials": [
+      { "id": "tea-product", "type": "product", "title": "产品核心参数", "content": "海拔800米茶园，清明前采摘；一芽一叶，低温慢焙；50克独立罐装，适合办公室与伴手礼场景。" },
+      { "id": "tea-story", "type": "story", "title": "品牌背景故事", "content": "三代茶农合作社坚持小批量采制，让年轻人也能用一杯茶认识春天的山。" },
+      { "id": "tea-reference", "type": "reference", "title": "历史爆款参考", "content": "春天的第一杯不用排队，是把整座山的清新泡进杯子里。" }
+    ]
+  },
+  {
+    "id": "heritage-town",
+    "name": "青石巷文旅",
+    "industry": "古镇非遗文旅",
+    "location": "江西 · 景德镇",
+    "tagline": "在一条老街，遇见手艺的温度",
+    "accent": "#caa278",
+    "materials": [
+      { "id": "town-product", "type": "product", "title": "产品核心参数", "content": "周末半日非遗体验路线；包含手作工坊、老街导览与在地茶点；可预约双人票。" },
+      { "id": "town-story", "type": "story", "title": "品牌背景故事", "content": "由本地青年与老匠人共创，让古镇不只是打卡背景，也成为能亲手参与的文化空间。" },
+      { "id": "town-reference", "type": "reference", "title": "历史爆款参考", "content": "把周末还给自己：转进青石巷，慢一点，亲手做一件有故事的作品。" }
+    ]
+  },
+  {
+    "id": "navel-orange",
+    "name": "橙意果园",
+    "industry": "地方特色助农脐橙",
+    "location": "江西 · 赣州",
+    "tagline": "一颗好橙，从果园直达餐桌",
+    "accent": "#e7a45d",
+    "materials": [
+      { "id": "orange-product", "type": "product", "title": "产品核心参数", "content": "赣南产地直采，单果约180—230克；人工分拣、现摘现发；5斤家庭装。" },
+      { "id": "orange-story", "type": "story", "title": "品牌背景故事", "content": "返乡青年联合乡邻果农建立直销渠道，让好果子卖上合理价格，也让消费者尝到当季鲜甜。" },
+      { "id": "orange-reference", "type": "reference", "title": "历史爆款参考", "content": "剥开一颗赣南脐橙，冬天的阳光就有了味道。" }
+    ]
+  }
+]
