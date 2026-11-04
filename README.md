@@ -56,6 +56,26 @@ git push -u origin dev-b
 
 第一次推送后可用 `git push` 更新同一分支，再在 GitHub 上发起指向 `main` 的 Pull Request，写明修改内容和涉及目录。合并冲突优先由对应目录负责人处理；跨目录改动请在 PR 里标注。`git pull origin main` 会把主线更新带入当前分支，执行前先保存自己的工作，出现冲突时解决后再推送。
 
+## 开工前快照与一键回滚
+
+开始新功能、修改或重构之前，上一个可用的状态必须已经在 Git 里，保证随时能回到改崩前的样子。仓库根目录的 `scripts/checkpoint.ps1` 会自动完成这件事：目录还没初始化 Git 时执行 `git init` 并提交初始快照；存在未提交改动时自动把上一个可用状态提交；工作区干净时提示可以开工。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/checkpoint.ps1
+```
+
+改崩了想回到上一次正常运行的快照时：
+
+```powershell
+# 丢弃自最近一次提交以来的所有改动（含新文件），回到最近一次提交
+powershell -ExecutionPolicy Bypass -File scripts/rollback.ps1 -Mode discard
+
+# 连最近一次提交也一并回退（被打掉的提交仍可通过 git reflog 找回）
+powershell -ExecutionPolicy Bypass -File scripts/rollback.ps1 -Mode last
+```
+
+两个脚本都会先展示要提交或丢弃的内容再执行，`rollback.ps1` 需要输入 `Y` 确认（加 `-Force` 跳过）。完整规则见 [AGENTS.md](AGENTS.md)。
+
 ## 协作时请避免
 
 - 不要直接向 `main` 推送，也不要多人共用一个开发分支。
