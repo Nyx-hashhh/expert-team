@@ -1,0 +1,71 @@
+/* B 分区私有预览增强样式：CSS Module 作用域隔离，不影响全局样式 */
+
+/* ── 小红书：图片轮播 ── */
+.carousel{position:relative;height:205px;overflow:hidden;cursor:pointer;user-select:none}
+.carouselTrack{display:flex;height:100%;transition:transform .45s cubic-bezier(.22,.61,.36,1)}
+.carouselSlide{flex:0 0 100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:#fff;position:relative}
+.slideMark{font-size:12px;letter-spacing:4px;border:1px solid #ffffffaa;padding:7px 11px;margin-bottom:12px}
+.slideIndex{position:absolute;right:10px;bottom:10px;background:#0004;padding:2px 6px;border-radius:8px;font-size:8px}
+.slideTitle{font-family:Georgia,serif;font-size:17px;line-height:1.5;text-shadow:0 2px 10px #0003}
+.carouselDots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:5px;z-index:2}
+.carouselDots button{width:6px;height:6px;padding:0;border:0;border-radius:50%;background:#ffffff7f;cursor:pointer;transition:width .25s,background .25s}
+.carouselDots button.on{width:15px;border-radius:4px;background:#fff}
+.carouselArrow{position:absolute;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:0;background:#00000042;color:#fff;display:grid;place-items:center;cursor:pointer;z-index:2}
+.carouselArrow.l{left:8px}
+.carouselArrow.r{right:8px}
+
+/* 双击点赞：爱心迸发动画 */
+.burst{position:absolute;left:50%;top:50%;color:#ff2442;z-index:3;pointer-events:none;animation:burst .8s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.25)}70%{opacity:1;transform:translate(-50%,-54%) scale(1)}100%{opacity:0;transform:translate(-50%,-62%) scale(.9)}}
+
+/* 互动数据行 */
+.metricRow{display:flex;align-items:center;gap:13px;margin-top:13px;font-size:10px;color:#6a736c}
+.metricRow button{display:flex;align-items:center;gap:4px;border:0;background:none;color:inherit;font-size:10px;cursor:pointer;padding:0;font-family:inherit}
+.metricRow button.on{color:#ff2442}
+.metricHint{margin-left:auto;color:#a8b3a8;font-size:9px}
+
+/* 评论区预览 */
+.commentBlock{margin-top:12px;background:#f8f9f7;border-radius:10px;padding:10px 12px}
+.comment{display:flex;gap:8px}
+.comment + .comment{margin-top:9px}
+.commentAvatar{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:9px;color:#fff;flex:none}
+.commentMain{flex:1;min-width:0}
+.commentUser{font-size:9.5px;font-weight:700;color:#7c887f}
+.commentText{font-size:9.5px;line-height:1.65;color:#49584d;margin-top:2px}
+.commentMore{margin-top:8px;font-size:9px;color:#9aa8a0;border-top:1px dashed #e0e5e0;padding-top:7px}
+
+/* ── 微博：热门评论 ── */
+.hotComment{margin-top:14px;background:#f7f9f7;border-radius:9px;padding:10px 12px;font-size:9.5px;color:#4c584e;line-height:1.65}
+.hotComment b{color:#5769a0;font-weight:700}
+.hotComment span{color:#9aa8a0}
+
+/* ── 抖音：沉浸式播放器 ── */
+.dyPlayer{position:relative;background:linear-gradient(160deg,#131c20,#26383d 60%,#1a2a30);overflow:hidden;height:330px;color:#fff}
+.dyProgress{position:absolute;top:11px;left:12px;right:12px;display:flex;gap:4px;z-index:3}
+.dyProgress i{flex:1;height:3px;border-radius:2px;background:#ffffff38;transition:background .3s}
+.dyProgress i.on{background:#fff}
+.dyCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px 58px;z-index:1}
+.dyPlay{width:52px;height:52px;border-radius:50%;background:#ffffff26;border:0;color:#fff;display:grid;place-items:center;cursor:pointer;z-index:4;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #ffffff30}55%{box-shadow:0 0 0 13px #ffffff00}}
+.dyTitle{margin-top:17px;font-size:15px;font-weight:700;line-height:1.55;text-shadow:0 2px 8px #0006}
+.dySub{margin-top:7px;font-size:9px;color:#ffffffb3;letter-spacing:1px}
+.dyRail{position:absolute;right:12px;bottom:16px;display:flex;flex-direction:column;gap:15px;align-items:center;z-index:3}
+.dyRailItem{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;color:#fff;font-size:9px;cursor:pointer;font-family:inherit;padding:0}
+.dyRailItem svg{width:25px;height:25px;filter:drop-shadow(0 2px 4px #0006)}
+.dyFollow{width:13px;height:13px;border-radius:50%;background:#ff2c55;color:#fff;display:grid;place-items:center;margin-top:-9px}
+.dyDisc{width:36px;height:36px;border-radius:50%;border:5px solid #00000036;background:linear-gradient(135deg,#33464d,#0e161a);display:grid;place-items:center;animation:spin 4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.dyCaption{position:absolute;left:14px;bottom:16px;right:62px;z-index:2;font-size:10px;line-height:1.7;text-shadow:0 1px 4px #0009}
+.dyCaption b{font-size:11px;display:block;margin-bottom:5px}
+.dyCaption small{color:#ffffffd6;font-size:9px}
+
+/* ── 抖音：分镜时间轴 ── */
+.shotListV2{display:grid;gap:9px}
+.shotItem{display:flex;gap:10px;border:1px solid #edf0ed;border-radius:9px;padding:9px 11px;cursor:pointer;background:#fff;transition:border-color .2s,background .2s,box-shadow .2s;font-family:inherit;text-align:left;width:100%}
+.shotOn{background:#f6faf6;box-shadow:0 3px 10px #1e38231a}
+.shotTime{width:42px;flex:none;color:#59916c;font-size:10px;font-weight:700}
+.shotMain{flex:1;min-width:0}
+.shotMain strong{font-size:10px;display:block}
+.shotText{display:block;margin:5px 0;font-size:10px;line-height:1.8;color:#49584d;white-space:pre-line}
+.shotBgm{display:block;font-size:9px;color:#9da89f}
+.demoTag{display:inline-block;font-size:8px;letter-spacing:1px;color:#8ea792;border:1px solid #cfe0d0;border-radius:4px;padding:2px 6px;margin-left:7px;vertical-align:1px;font-weight:400}
