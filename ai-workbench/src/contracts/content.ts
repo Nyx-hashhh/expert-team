@@ -42,6 +42,7 @@ export interface GenerateRequest {
   contractVersion: typeof CONTRACT_VERSION;
   enterpriseId: string;
   selectedMaterialIds: string[];
+  selectedMaterials: Material[];
   goal: string;
   platforms: Platform[];
   tone: string;

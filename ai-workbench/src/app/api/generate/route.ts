@@ -8,6 +8,7 @@ const requestSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   enterpriseId: z.string(),
   selectedMaterialIds: z.array(z.string()),
+  selectedMaterials: z.array(z.object({ id: z.string(), type: z.enum(["product", "story", "reference"]), title: z.string().max(200), content: z.string().max(5000) })).max(30),
   goal: z.string().trim().min(1).max(2000),
   platforms: z.array(z.enum(PLATFORMS)).min(1),
   tone: z.string().max(80),
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) return fallback();
 
-  const selected = enterprise.materials.filter((item) => input.selectedMaterialIds.includes(item.id));
+  const selected = input.selectedMaterials.filter((item) => input.selectedMaterialIds.includes(item.id));
   const client = new OpenAI({ apiKey, baseURL: process.env.LLM_BASE_URL || undefined, timeout: 5200, maxRetries: 0 });
   try {
     const completion = await client.chat.completions.create({

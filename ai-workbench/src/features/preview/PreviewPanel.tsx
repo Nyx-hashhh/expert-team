@@ -1,7 +1,7 @@
 "use client";
 
 import { Bookmark, Copy, Download, Heart, MessageCircle, Send, Share2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PLATFORM_LABELS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
 
 interface PreviewPanelProps {
@@ -17,8 +17,16 @@ interface PreviewPanelProps {
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
+  const [visibleCount, setVisibleCount] = useState(0);
   const available = Object.keys(result?.platforms ?? {}) as Platform[];
   const content = result?.platforms[activePlatform]?.[activeVersion];
+  useEffect(() => {
+    if (!content || result?.source !== "fallback") return;
+    const reset = setTimeout(() => setVisibleCount(0), 0);
+    const timer = setInterval(() => setVisibleCount((value) => Math.min(value + 6, content.body.length)), 16);
+    return () => { clearTimeout(reset); clearInterval(timer); };
+  }, [content, result?.source]);
+  const shownContent = content && result?.source === "fallback" ? { ...content, body: content.body.slice(0, visibleCount), hashtags: visibleCount >= content.body.length ? content.hashtags : [] } : content;
 
   async function copyContent() {
     if (!content) return;
@@ -51,7 +59,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>
-        {!content ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : activePlatform === "xiaohongshu" ? <XiaohongshuPreview content={content} enterprise={enterprise} /> : activePlatform === "weibo" ? <WeiboPreview content={content} enterprise={enterprise} /> : <DouyinPreview content={content} />}
+        {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : activePlatform === "xiaohongshu" ? <XiaohongshuPreview content={shownContent} enterprise={enterprise} /> : activePlatform === "weibo" ? <WeiboPreview content={shownContent} enterprise={enterprise} /> : <DouyinPreview content={shownContent} />}
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>

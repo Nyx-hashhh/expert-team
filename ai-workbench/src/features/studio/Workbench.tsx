@@ -61,7 +61,7 @@ export function Workbench() {
     if (!goal.trim()) { setNotice("请先填写本次宣发诉求"); return; }
     if (!platforms.length) { setNotice("请至少选择一个目标平台"); return; }
     if (quota <= 0) { setNotice("试用额度已用完"); return; }
-    const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterialIds: selectedIds, goal: goal.trim(), platforms, tone };
+    const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterialIds: selectedIds, selectedMaterials: materials.filter((item) => selectedIds.includes(item.id)), goal: goal.trim(), platforms, tone };
     setIsGenerating(true); setNotice("正在准备各平台 A/B 文案…");
     let next: GenerateResult;
     const controller = new AbortController();

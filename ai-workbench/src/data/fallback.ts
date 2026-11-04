@@ -1,7 +1,7 @@
 import type { Enterprise, GenerateRequest, GenerateResult, PlatformVersions } from "@/contracts/content";
 
 export function buildFallback(request: GenerateRequest, enterprise: Enterprise): GenerateResult {
-  const product = enterprise.materials.find((item) => item.type === "product")?.content ?? "";
+  const product = request.selectedMaterials.find((item) => item.type === "product")?.content ?? request.selectedMaterials[0]?.content ?? "品牌坚守真实品质与在地故事。";
   const goal = request.goal.trim() || "把品牌的好故事分享给更多人";
   const brand = enterprise.name;
   const tag = enterprise.industry.replaceAll(" ", "");
