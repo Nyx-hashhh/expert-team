@@ -51,7 +51,65 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
       ],
     },
   };
-  const all = { xiaohongshu, weibo, douyin };
+  const reddit: PlatformVersions = {
+    A: {
+      title: `We are ${brand}, a small ${enterprise.industry} brand from ${enterprise.location} — AMA`,
+      body: `Hi r/smallbusiness! We are building ${brand} in ${enterprise.location}, and our focus is simple: ${product}\n\nOur next goal is to ${goal}. We would love honest feedback from this community: what would you want to know before trying a brand like ours? No hard sell — we are here to listen and learn.`,
+      hashtags: ["r/smallbusiness", "Discussion", "Founder story"],
+    },
+    B: {
+      title: `What makes a local ${enterprise.industry} brand worth supporting?`,
+      body: `We have been thinking about this while growing ${brand}. For us, it comes down to where the product comes from, who makes it, and whether the quality holds up.\n\nOur story starts in ${enterprise.location}: ${product}\n\nWe are currently working to ${goal}. What earns your trust when you discover an unfamiliar independent brand?`,
+      hashtags: ["r/Entrepreneur", "Question", "Small business"],
+    },
+  };
+  const discord: PlatformVersions = {
+    A: {
+      title: `✨ New from ${brand}`,
+      body: `Hey everyone! We are excited to share what we have been working on in ${enterprise.location}.\n\n**Why it is special**\n${product}\n\n**What is next**\n${goal}\n\nDrop your questions in the thread — our team will be here to chat.`,
+      hashtags: ["#announcements", "#new-release", "#community"],
+    },
+    B: {
+      title: `Community first look: ${brand}`,
+      body: `You are getting the first look before anyone else 👀\n\n${brand} is our way of sharing a piece of ${enterprise.location} with more people. ${product}\n\nWe are now preparing to ${goal}. React with 🌿 if you want a behind-the-scenes tour, or reply with what you would like us to show next.`,
+      hashtags: ["#community-preview", "#behind-the-scenes", "#feedback"],
+    },
+  };
+  const instagram: PlatformVersions = {
+    A: {
+      title: `A story worth slowing down for`,
+      body: `Made with care in ${enterprise.location}. ${product}\n\nAt ${brand}, we believe the best things carry a sense of place. Today, we are taking the next step: ${goal}.\n\nSave this post for later and share it with someone who loves discovering thoughtful independent brands.`,
+      hashtags: ["#SmallBusiness", "#MadeWithCare", `#${brand.replaceAll(" ", "")}`, "#DiscoverLocal"],
+    },
+    B: {
+      title: `From ${enterprise.location}, with care`,
+      body: `Swipe to meet ${brand} — the people, place and details behind every product.\n\n${product}\n\nOur current mission: ${goal}. Which part of the story would you like to see next? Tell us below.`,
+      hashtags: ["#BrandStory", "#BehindTheScenes", "#IndependentBrand", "#ShopSmall"],
+    },
+  };
+  const tiktok: PlatformVersions = {
+    A: {
+      title: `POV: you just found a hidden gem from ${enterprise.location}`,
+      body: `Hook: Stop scrolling — this is not your usual ${enterprise.industry} brand.\nPayoff: ${product}\nCTA: Follow ${brand} and watch the story unfold.`,
+      hashtags: ["#SmallBusinessTok", "#HiddenGem", "#BrandStory"],
+      storyboard: [
+        { timeRange: "0–2s", shot: "Macro product reveal with a fast push-in", voiceover: `Stop scrolling — meet ${brand}.`, bgm: "Trending upbeat audio, beat drop on reveal" },
+        { timeRange: "2–8s", shot: "Quick cuts of the place, process and product details", voiceover: `${product}`, bgm: "Keep cuts synced to the beat" },
+        { timeRange: "8–15s", shot: "Product in use, then logo and comment prompt", voiceover: `${goal}. Follow to see what happens next.`, bgm: "Warm lift and clean finish" },
+      ],
+    },
+    B: {
+      title: `The 15-second story behind ${brand}`,
+      body: `Hook: This started in ${enterprise.location}.\nStory: One detail, one maker, one reason it matters.\nCTA: Would you try it? Comment below.`,
+      hashtags: ["#TikTokMadeMeBuyIt", "#MeetTheMaker", "#ShopSmall"],
+      storyboard: [
+        { timeRange: "0–3s", shot: "Open on a surprising detail, text overlay asks a question", voiceover: `What if ${enterprise.industry} could feel this personal?`, bgm: "Curious opening sting" },
+        { timeRange: "3–10s", shot: "Maker hands, local scenery and finished product", voiceover: `${brand} brings a piece of ${enterprise.location} into every detail.`, bgm: "Organic rhythmic build" },
+        { timeRange: "10–15s", shot: "Hand-off moment and direct-to-camera close", voiceover: `${goal}. Would you try it?`, bgm: "Beat pause for the question" },
+      ],
+    },
+  };
+  const all: Record<GenerateRequest["platforms"][number], PlatformVersions> = { xiaohongshu, weibo, douyin, reddit, discord, instagram, tiktok };
   return {
     contractVersion: 1,
     enterpriseId: enterprise.id,

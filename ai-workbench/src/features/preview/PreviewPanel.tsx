@@ -2,7 +2,7 @@
 
 import { Bookmark, Copy, Download, Heart, MessageCircle, Send, Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { PLATFORM_LABELS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
 
 interface PreviewPanelProps {
   enterprise: Enterprise;
@@ -53,13 +53,13 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <span className="live-pill"><span /> 实时同步</span>
       </div>
       <div className="preview-tabs">
-        {(["xiaohongshu", "weibo", "douyin"] as Platform[]).map((platform) => (
+        {PLATFORMS.map((platform) => (
           <button key={platform} className={activePlatform === platform ? "active" : ""} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
         ))}
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>
-        {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : activePlatform === "xiaohongshu" ? <XiaohongshuPreview content={shownContent} enterprise={enterprise} /> : activePlatform === "weibo" ? <WeiboPreview content={shownContent} enterprise={enterprise} /> : <DouyinPreview content={shownContent} />}
+        {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={shownContent} enterprise={enterprise} />}
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
@@ -69,6 +69,18 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       {notice && <p className="action-notice" role="status">{notice}</p>}
     </section>
   );
+}
+
+function PlatformPreview({ platform, content, enterprise }: { platform: Platform; content: ContentVersion; enterprise: Enterprise }) {
+  switch (platform) {
+    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} />;
+    case "weibo": return <WeiboPreview content={content} enterprise={enterprise} />;
+    case "douyin": return <DouyinPreview content={content} />;
+    case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
+    case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
+    case "instagram": return <InstagramPreview content={content} enterprise={enterprise} />;
+    case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
+  }
 }
 
 function XiaohongshuPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
@@ -81,4 +93,20 @@ function WeiboPreview({ content, enterprise }: { content: ContentVersion; enterp
 
 function DouyinPreview({ content }: { content: ContentVersion }) {
   return <div className="script-card"><div className="script-cover"><span>SHORT VIDEO / SCRIPT</span><h3>{content.title}</h3><p>15 秒竖屏短视频 · 黄金前 3 秒钩子</p></div><div className="script-section"><h4>核心口播</h4><p>{content.body}</p></div><div className="script-section"><h4>分镜脚本</h4><div className="shot-list">{content.storyboard?.map((shot) => <div className="shot" key={shot.timeRange}><span>{shot.timeRange}</span><div><strong>{shot.shot}</strong><p>🎙 {shot.voiceover}</p><small>♫ {shot.bgm}</small></div></div>)}</div></div><div className="hashtags">{content.hashtags.join("  ")}</div></div>;
+}
+
+function RedditPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
+  return <div className="reddit-shell"><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>Join</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · Posted by u/{enterprise.name.replaceAll(" ", "_")} · just now</div><h3>{content.title}</h3><p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> 24 Comments</span><span><Share2 size={14} /> Share</span><span>•••</span></footer></article></div></div>;
+}
+
+function DiscordPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
+  return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3><p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
+}
+
+function InstagramPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
+  return <div className="instagram-phone"><div className="instagram-head"><strong>Instagram</strong><span>♡　⌁</span></div><div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div><div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}><span>01 / 03</span><div><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong></div></div><div className="instagram-actions"><span><Heart size={22} /><MessageCircle size={21} /><Send size={20} /></span><Bookmark size={21} /></div><div className="instagram-caption"><strong>Liked by community and 1,248 others</strong><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>View all 36 comments · just now</small></div></div>;
+}
+
+function TikTokPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
+  return <div className="tiktok-phone"><div className="tiktok-top"><span>Following</span><strong>For You</strong></div><div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}><div className="tiktok-scene-copy"><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong><span>▶ 00:15</span></div></div><div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>Share</small></span></div><div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ original sound · {enterprise.name}</span></div><nav><span>⌂<small>Home</small></span><span>⌕<small>Discover</small></span><b>＋</b><span>▣<small>Inbox</small></span><span>♙<small>Profile</small></span></nav></div>;
 }

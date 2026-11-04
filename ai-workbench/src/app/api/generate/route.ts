@@ -24,6 +24,10 @@ const resultSchema = z.object({
   xiaohongshu: z.object({ A: versionSchema, B: versionSchema }).optional(),
   weibo: z.object({ A: versionSchema, B: versionSchema }).optional(),
   douyin: z.object({ A: versionSchema, B: versionSchema }).optional(),
+  reddit: z.object({ A: versionSchema, B: versionSchema }).optional(),
+  discord: z.object({ A: versionSchema, B: versionSchema }).optional(),
+  instagram: z.object({ A: versionSchema, B: versionSchema }).optional(),
+  tiktok: z.object({ A: versionSchema, B: versionSchema }).optional(),
 });
 
 export async function POST(request: Request) {
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
       model: process.env.LLM_MODEL || "deepseek-chat",
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: "你是中小企业多平台传播策划。只输出合法 JSON 对象。按要求为每个平台生成 A/B 两个不同切入角度的中文版本。每版包含 title、body、hashtags 字符串数组；抖音每版另含 storyboard 数组，每项含 timeRange、shot、voiceover、bgm。不要捏造产品事实，不要声称话题标签是实时热榜。JSON 顶层键仅使用 xiaohongshu、weibo、douyin。" },
+        { role: "system", content: "你是中小企业多平台传播策划。只输出合法 JSON 对象。按要求为每个平台生成 A/B 两个不同切入角度的原生平台文案：xiaohongshu、weibo、douyin 使用中文；reddit、discord、instagram、tiktok 使用自然英文并遵循各自社区语气，避免把中文文案直译。每版包含 title、body、hashtags 字符串数组；douyin 与 tiktok 每版另含 storyboard 数组，每项含 timeRange、shot、voiceover、bgm。Reddit 应以讨论和真实交流为主，避免硬广；Discord 应适合社群公告或互动；Instagram 注重视觉叙事与简洁 caption；TikTok 强调开头钩子和短视频节奏。不要捏造产品事实，不要声称话题标签是实时热榜。JSON 顶层键仅使用 xiaohongshu、weibo、douyin、reddit、discord、instagram、tiktok。" },
         { role: "user", content: JSON.stringify({ enterprise: { name: enterprise.name, industry: enterprise.industry, location: enterprise.location, tagline: enterprise.tagline }, selectedMaterials: selected, goal: input.goal, platforms: input.platforms, tone: input.tone }) },
       ],
     });
