@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 主程 A | `ai-workbench/src/contracts/`、`src/features/studio/`、`src/app/api/`、`src/components/ui/`、`package.json` | 统一数据契约、创作主控台、模型接口、全局依赖与页面装配 |
 | 队友 B | `ai-workbench/src/features/preview/` | 小红书、微博、抖音预览，平台和版本切换，复制、导图、推送日历按钮 |
-| 队友 C | `ai-workbench/src/data/`、`src/features/analytics/`、`src/app/analytics/` | 企业案例与兜底内容、演示指标、传播图表 |
+| 队友 C（huihui1753） | `ai-workbench/src/data/`、`src/features/analytics/`、`src/app/analytics/` | 企业案例与兜底内容、演示指标、传播图表 |
 | 主程 A | `ai-workbench/src/features/calendar/`、`src/app/calendar/`、`src/app/page.tsx`、`src/app/layout.tsx` | 排期状态和各模块在页面中的连接 |
 
 表格中的 `src/` 均指 `ai-workbench/src/`。共享契约在 `ai-workbench/src/contracts/content.ts`，当前版本为 `contractVersion: 1`。生成请求会带上企业、所选素材、推广目标、平台和语调；返回结果按平台包含 A/B 两版。需要新增字段时，请先与主程约定字段名和含义，再由主程更新契约，随后各分区使用新字段。
