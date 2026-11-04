@@ -2,6 +2,7 @@
 
 import { BarChart3, BookOpen, CalendarDays, Check, ChevronRight, Copy, FileText, Layers3, Menu, Plus, Search, Settings2, Sparkles, WandSparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import enterprisesData from "@/data/enterprises.json";
 import { buildFallback } from "@/data/fallback";
 import { CONTRACT_VERSION, PLATFORM_LABELS, PLATFORMS, type Enterprise, type GenerateRequest, type GenerateResult, type Material, type MaterialType, type Platform, type ScheduleItem, type Version } from "@/contracts/content";
@@ -31,7 +32,10 @@ export function Workbench() {
   const enterprise = enterprises.find((item) => item.id === enterpriseId) ?? enterprises[0];
   const materials = [...enterprise.materials, ...(customMaterials[enterprise.id] ?? [])];
 
-  useEffect(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota", 17)); }, []);
+  useEffect(() => {
+    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota", 17)); }, 0);
+    return () => clearTimeout(timeout);
+  }, []);
 
   function changeEnterprise(id: string) {
     const next = enterprises.find((item) => item.id === id) ?? enterprises[0];
@@ -87,7 +91,7 @@ export function Workbench() {
     <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
       <div className="brand"><div className="brand-icon"><Layers3 size={21} /></div><div><strong>知行传播</strong><small>AI CONTENT STUDIO</small></div></div>
       <div className="workspace-label">工作空间</div><div className="workspace-card"><div className="workspace-avatar">企</div><div><strong>企业增长工作台</strong><small>本地演示空间</small></div></div>
-      <div className="nav-label">创作工作区</div><nav className="side-nav" aria-label="主导航"><a className="selected" href="/"><WandSparkles size={18} /> 多平台创作 <ChevronRight size={16} /></a><a href="/calendar"><CalendarDays size={18} /> 发布日历</a><a href="/analytics"><BarChart3 size={18} /> 传播数据看板</a></nav>
+      <div className="nav-label">创作工作区</div><nav className="side-nav" aria-label="主导航"><Link className="selected" href="/"><WandSparkles size={18} /> 多平台创作 <ChevronRight size={16} /></Link><Link href="/calendar"><CalendarDays size={18} /> 发布日历</Link><Link href="/analytics"><BarChart3 size={18} /> 传播数据看板</Link></nav>
       <div className="nav-label secondary-label">资源管理</div><nav className="side-nav"><a href="#knowledge"><BookOpen size={18} /> 企业素材库</a><a href="#reference"><FileText size={18} /> 创作指南</a></nav>
       <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> 企业试用额度</span><strong>{quota}/20 次</strong></div><div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div><p>生成一次，解锁各平台的双版本创意。</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
     </aside>

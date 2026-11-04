@@ -1,0 +1,22 @@
+{
+  "trend": [
+    { "day": "周一", "xiaohongshu": 320, "weibo": 210, "douyin": 180 },
+    { "day": "周二", "xiaohongshu": 410, "weibo": 245, "douyin": 240 },
+    { "day": "周三", "xiaohongshu": 380, "weibo": 310, "douyin": 360 },
+    { "day": "周四", "xiaohongshu": 520, "weibo": 275, "douyin": 410 },
+    { "day": "周五", "xiaohongshu": 610, "weibo": 340, "douyin": 550 },
+    { "day": "周六", "xiaohongshu": 730, "weibo": 385, "douyin": 680 },
+    { "day": "周日", "xiaohongshu": 890, "weibo": 420, "douyin": 790 }
+  ],
+  "platforms": [
+    { "name": "小红书", "value": 45, "color": "#85aa88" },
+    { "name": "微博", "value": 27, "color": "#ddb184" },
+    { "name": "抖音", "value": 28, "color": "#7f9ba1" }
+  ],
+  "hashtags": [
+    { "tag": "#宝藏品牌", "count": 82 },
+    { "tag": "#地方好物", "count": 68 },
+    { "tag": "#生活灵感", "count": 51 },
+    { "tag": "#走心礼物", "count": 43 }
+  ]
+}
