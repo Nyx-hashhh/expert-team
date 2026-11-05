@@ -50,6 +50,7 @@ function DemoHero({ enterprise, creditClassName = "" }: { enterprise: Enterprise
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
+  const platformTabsRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
@@ -83,6 +84,15 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   }, [enterprise.id, activePlatform, activeVersion]);
 
   useEffect(() => { setSlide(0); setLiked(false); setCollected(false); setExtraLikes(0); setBurstKey(0); setActiveShot(0); setPlaying(true); }, [content]);
+  useEffect(() => {
+    const list = platformTabsRef.current;
+    const selected = list?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+    if (!list || !selected) return;
+    const listBounds = list.getBoundingClientRect();
+    const selectedBounds = selected.getBoundingClientRect();
+    if (selectedBounds.left < listBounds.left) list.scrollBy({ left: selectedBounds.left - listBounds.left, behavior: "smooth" });
+    else if (selectedBounds.right > listBounds.right) list.scrollBy({ left: selectedBounds.right - listBounds.right, behavior: "smooth" });
+  }, [activePlatform]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => {
     if (shots.length <= 1 || !playing) return;
@@ -139,10 +149,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <div><span className="eyebrow">LIVE PREVIEW</span><h2>多端拟真预览</h2></div>
         <span className="live-pill"><span /> 实时同步</span>
       </div>
-      <div className="preview-tabs">
-        {PLATFORMS.map((platform) => (
-          <button key={platform} className={activePlatform === platform ? "active" : ""} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
-        ))}
+      <div className={previewCss.platformTabStrip}>
+        <button type="button" className={previewCss.platformTabArrow} aria-label="向左查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: -180, behavior: "smooth" })}><ChevronLeft size={15} /></button>
+        <div className={`preview-tabs ${previewCss.platformTabTrack}`} ref={platformTabsRef} aria-label="预览平台，可横向滑动">
+          {PLATFORMS.map((platform) => (
+            <button key={platform} type="button" className={activePlatform === platform ? "active" : ""} aria-pressed={activePlatform === platform} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
+          ))}
+        </div>
+        <button type="button" className={previewCss.platformTabArrow} aria-label="向右查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight size={15} /></button>
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>

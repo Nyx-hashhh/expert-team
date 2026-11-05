@@ -1,5 +1,15 @@
 /* B 分区私有预览增强样式：CSS Module 作用域隔离，不影响全局样式 */
 
+/* 平台导航：触屏横滑、触控板横滚，桌面可用两侧箭头。 */
+.platformTabStrip{display:flex;align-items:stretch;min-width:0;margin-top:25px;border-bottom:1px solid #e7ece6}
+.platformTabStrip .platformTabTrack{flex:1;min-width:0;margin-top:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#a9c4ad transparent;scroll-behavior:smooth;touch-action:pan-x;overscroll-behavior-x:contain}
+.platformTabTrack button{flex:0 0 auto}
+.platformTabStrip .platformTabTrack::-webkit-scrollbar{display:block;height:3px}
+.platformTabStrip .platformTabTrack::-webkit-scrollbar-thumb{background:#a9c4ad;border-radius:4px}
+.platformTabArrow{flex:0 0 24px;display:grid;place-items:center;border:0;background:#fff;color:#628568;cursor:pointer}
+.platformTabArrow:hover{color:#2e6840;background:#f3f8f3}
+.platformTabArrow:focus-visible{outline:2px solid #5d946b;outline-offset:-2px}
+
 /* 三个示例案例共用的预览首图；新增案例仍沿用各平台原有占位。 */
 .demoHeroImage{object-fit:cover;object-position:center;z-index:0}
 .demoHeroCredit{position:absolute;right:8px;bottom:8px;z-index:2;border-radius:10px;background:#0008;color:#fff;padding:3px 6px;font-size:8px;line-height:1.2;white-space:nowrap}
