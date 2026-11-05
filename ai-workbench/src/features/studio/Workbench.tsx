@@ -11,6 +11,7 @@ import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { Button } from "@/components/ui/button";
 
 const enterprises = enterprisesData as Enterprise[];
+const isDevelopment = process.env.NODE_ENV === "development";
 const typeLabels: Record<MaterialType, string> = { product: "产品参数", story: "品牌故事", reference: "参考文案" };
 const tones = ["闺蜜安利", "专业品鉴", "年轻活力", "温暖叙事"];
 const platformMarks: Record<Platform, string> = { xiaohongshu: "小", weibo: "微", douyin: "抖", reddit: "r/", discord: "D", instagram: "IG", tiktok: "♪" };
@@ -21,7 +22,7 @@ const platformDescriptions: Record<Platform, string> = {
   reddit: "社区讨论帖",
   discord: "社群公告互动",
   instagram: "视觉故事 Caption",
-  tiktok: "英文短视频脚本",
+  tiktok: "短视频脚本 · 跟随诉求语言",
 };
 
 export function Workbench() {
@@ -70,7 +71,7 @@ export function Workbench() {
     if (isGenerating) return;
     if (!goal.trim()) { setNotice("请先填写本次宣发诉求"); return; }
     if (!platforms.length) { setNotice("请至少选择一个目标平台"); return; }
-    if (quota <= 0) { setNotice("试用额度已用完"); return; }
+    if (!isDevelopment && quota <= 0) { setNotice("试用额度已用完"); return; }
     const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterialIds: selectedIds, selectedMaterials: materials.filter((item) => selectedIds.includes(item.id)), goal: goal.trim(), platforms, tone };
     setIsGenerating(true); setNotice("正在准备各平台 A/B 文案…");
     let next: GenerateResult;
@@ -84,7 +85,7 @@ export function Workbench() {
     } catch { next = buildFallback(request, enterprise); }
     finally { clearTimeout(timeout); }
     setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
-    setQuota(quota - 1); writeLocal("quota", quota - 1);
+    if (!isDevelopment) { setQuota(quota - 1); writeLocal("quota", quota - 1); }
     setIsGenerating(false);
     setNotice(next.source === "fallback" ? "已加载本地优质演示结果" : "已生成各平台 A/B 创意文案");
   }
@@ -104,13 +105,13 @@ export function Workbench() {
       <div className="workspace-label">工作空间</div><div className="workspace-card"><div className="workspace-avatar">企</div><div><strong>企业增长工作台</strong><small>本地演示空间</small></div></div>
       <div className="nav-label">创作工作区</div><nav className="side-nav" aria-label="主导航"><Link className="selected" href="/"><WandSparkles size={18} /> 多平台创作 <ChevronRight size={16} /></Link><Link href="/calendar"><CalendarDays size={18} /> 发布日历</Link><Link href="/analytics"><BarChart3 size={18} /> 传播数据看板</Link></nav>
       <div className="nav-label secondary-label">资源管理</div><nav className="side-nav"><a href="#knowledge"><BookOpen size={18} /> 企业素材库</a><a href="#reference"><FileText size={18} /> 创作指南</a></nav>
-      <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> 企业试用额度</span><strong>{quota}/20 次</strong></div><div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div><p>生成一次，解锁各平台的双版本创意。</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
+      <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> {isDevelopment ? "开发验收模式" : "企业试用额度"}</span><strong>{isDevelopment ? "不限次数" : `${quota}/20 次`}</strong></div>{!isDevelopment && <div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div>}<p>{isDevelopment ? "可反复生成内容，优先核验界面。" : "生成一次，解锁各平台的双版本创意。"}</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
     </aside>
     <main className="main-column"><header className="topbar"><div className="breadcrumb">工作空间 <ChevronRight size={14} /> <strong>多平台创作</strong></div><div className="topbar-right"><span className="topbar-search"><Search size={15} /> 搜索功能</span><span className="topbar-user">主</span></div></header>
       <div className="studio-content"><div className="page-intro"><div><div className="intro-kicker"><Sparkles size={15} /> AI 驱动的内容增长工作台</div><h1>让好故事，抵达每一个平台<span>✦</span></h1><p>汇集企业知识，一次创作，多平台精准转译。</p></div><div className="intro-decoration"><span>创意</span><span>策略</span><span>增长</span></div></div>
       <section className="section-card enterprise-section"><div className="section-heading"><div><span className="step">01</span><h2>选择企业案例</h2></div><p>一键载入行业背景与品牌素材</p></div><div className="enterprise-grid">{enterprises.map((item) => <button key={item.id} onClick={() => changeEnterprise(item.id)} className={`enterprise-tile ${item.id === enterpriseId ? "active" : ""}`}><span className="enterprise-symbol" style={{ backgroundColor: `${item.accent}33`, color: item.accent }}>{item.name.slice(0, 1)}</span><span><strong>{item.name}</strong><small>{item.industry}</small></span>{item.id === enterpriseId && <Check size={17} />}</button>)}</div><div className="case-note"><span className="case-dot" style={{ backgroundColor: enterprise.accent }} /> {enterprise.location} · {enterprise.tagline}</div></section>
       <section className="section-card" id="knowledge"><div className="section-heading"><div><span className="step">02</span><h2>企业素材与知识库</h2></div><button className="text-action" onClick={() => setShowMaterialForm(true)}><Plus size={16} /> 新增素材</button></div><p className="section-desc">勾选素材，AI 将从这些真实信息中提取亮点，融入创作。</p><div className="material-list">{materials.map((item) => <button className={`material-item ${selectedIds.includes(item.id) ? "checked" : ""}`} key={item.id} onClick={() => setSelectedIds((current) => current.includes(item.id) ? current.filter((value) => value !== item.id) : [...current, item.id])}><span className="check-box">{selectedIds.includes(item.id) && <Check size={13} />}</span><span className={`material-kind ${item.type}`}>{typeLabels[item.type]}</span><span className="material-copy"><strong>{item.title}</strong><small>{item.content}</small></span></button>)}</div><div className="selected-foot">已选 <strong>{selectedIds.length}</strong> 项素材，将作为生成背景知识</div></section>
-      <section className="section-card create-section"><div className="section-heading"><div><span className="step">03</span><h2>设置本次宣发任务</h2></div><span className="ai-badge"><Sparkles size={14} /> 智能转译引擎</span></div><label className="field-label" htmlFor="goal">核心宣发诉求 <span>*</span></label><textarea id="goal" value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="例如：新品上市早鸟特惠，主打年轻白领送礼场景；希望突出产地故事和品质感……" /><div className="field-meta"><span>清晰描述目标、受众与卖点，效果更好</span><span>{goal.length} 字</span></div><div className="form-divider" /><div className="field-label">目标平台 <small>支持多选 · Instagram 文案跟随诉求语言</small></div><div className="platform-choices">{PLATFORMS.map((platform) => <button key={platform} className={platforms.includes(platform) ? "active" : ""} onClick={() => setPlatforms((current) => current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform])}><span className={`platform-mark ${platform}`}>{platformMarks[platform]}</span><span><strong>{PLATFORM_LABELS[platform]}</strong><small>{platformDescriptions[platform]}</small></span><span className="choice-check">{platforms.includes(platform) && <Check size={12} />}</span></button>)}</div><div className="field-label tone-label">表达语调</div><div className="tone-choices">{tones.map((item) => <button key={item} className={tone === item ? "active" : ""} onClick={() => setTone(item)}>{item}</button>)}</div><div className="generate-row"><div><strong>A/B 双版本创作</strong><p>每个平台生成两种切入点，并提取话题标签</p></div><Button className="generate-button" onClick={generate} disabled={isGenerating}><WandSparkles size={18} /> {isGenerating ? "生成中…" : "一键生成内容"} <ChevronRight size={17} /></Button></div>{notice && <p className="studio-notice" role="status">{notice}</p>}</section>
+      <section className="section-card create-section"><div className="section-heading"><div><span className="step">03</span><h2>设置本次宣发任务</h2></div><span className="ai-badge"><Sparkles size={14} /> 智能转译引擎</span></div><label className="field-label" htmlFor="goal">核心宣发诉求 <span>*</span></label><textarea id="goal" value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="例如：新品上市早鸟特惠，主打年轻白领送礼场景；希望突出产地故事和品质感……" /><div className="field-meta"><span>清晰描述目标、受众与卖点，效果更好</span><span>{goal.length} 字</span></div><div className="form-divider" /><div className="field-label">目标平台 <small>支持多选 · 国外平台文案跟随诉求语言</small></div><div className="platform-choices">{PLATFORMS.map((platform) => <button key={platform} className={platforms.includes(platform) ? "active" : ""} onClick={() => setPlatforms((current) => current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform])}><span className={`platform-mark ${platform}`}>{platformMarks[platform]}</span><span><strong>{PLATFORM_LABELS[platform]}</strong><small>{platformDescriptions[platform]}</small></span><span className="choice-check">{platforms.includes(platform) && <Check size={12} />}</span></button>)}</div><div className="field-label tone-label">表达语调</div><div className="tone-choices">{tones.map((item) => <button key={item} className={tone === item ? "active" : ""} onClick={() => setTone(item)}>{item}</button>)}</div><div className="generate-row"><div><strong>A/B 双版本创作</strong><p>每个平台生成两种切入点，并提取话题标签</p></div><Button className="generate-button" onClick={generate} disabled={isGenerating}><WandSparkles size={18} /> {isGenerating ? "生成中…" : "一键生成内容"} <ChevronRight size={17} /></Button></div>{notice && <p className="studio-notice" role="status">{notice}</p>}</section>
       <div className="bottom-tip" id="reference"><Copy size={17} /> 创作建议：先选择 2–3 项最相关素材，再简要说明推广场景与目标受众。</div></div>
     </main>
     <PreviewPanel enterprise={enterprise} result={result} activePlatform={activePlatform} activeVersion={activeVersion} onPlatformChange={setActivePlatform} onVersionChange={setActiveVersion} onSchedule={schedule} />
