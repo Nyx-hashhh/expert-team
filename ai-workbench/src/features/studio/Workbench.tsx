@@ -34,7 +34,7 @@ export function Workbench() {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [activePlatform, setActivePlatform] = useState<Platform>("xiaohongshu");
   const [activeVersion, setActiveVersion] = useState<Version>("A");
-  const [quota, setQuota] = useState(17);
+  const [quota, setQuota] = useState(20);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [draftMaterial, setDraftMaterial] = useState({ type: "product" as MaterialType, title: "", content: "" });
@@ -44,7 +44,7 @@ export function Workbench() {
   const materials = [...enterprise.materials, ...(customMaterials[enterprise.id] ?? [])];
 
   useEffect(() => {
-    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota", 17)); }, 0);
+    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota-v2", 20)); }, 0);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -84,7 +84,7 @@ export function Workbench() {
     } catch { next = buildFallback(request, enterprise); }
     finally { clearTimeout(timeout); }
     setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
-    setQuota(quota - 1); writeLocal("quota", quota - 1);
+    setQuota(quota - 1); writeLocal("quota-v2", quota - 1);
     setIsGenerating(false);
     setNotice(next.source === "fallback" ? "已加载本地优质演示结果" : "已生成各平台 A/B 创意文案");
   }
