@@ -1,8 +1,12 @@
 "use client";
 
 import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import springTeaHero from "./hero-spring-tea.png";
+import heritageTownHero from "./hero-heritage-town.png";
+import navelOrangeHero from "./hero-navel-orange.png";
 import styles from "./preview.module.css";
 
 interface PreviewPanelProps {
@@ -29,6 +33,12 @@ function formatCount(value: number): string {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return String(value);
 }
+
+const XHS_DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
+  "spring-tea": { image: springTeaHero, alt: "春茶茶汤与鲜叶场景示意图" },
+  "heritage-town": { image: heritageTownHero, alt: "古镇陶艺体验场景示意图" },
+  "navel-orange": { image: navelOrangeHero, alt: "新鲜脐橙产品场景示意图" },
+};
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
@@ -187,6 +197,7 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
   // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
   const xhsCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
   const imageSlots = [1, 2, 3];
+  const hero = XHS_DEMO_HEROES[enterprise.id];
   return (
     <div className={xhsCss.xhsPhone}>
       <div className={xhsCss.xhsScreen}>
@@ -202,9 +213,8 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
         <div className={xhsCss.carousel} onDoubleClick={onLike} title="双击图片区域试试点赞">
           <div className={xhsCss.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
             {imageSlots.map((slot) => (
-              <div key={slot} className={`${xhsCss.carouselSlide} ${xhsCss.imagePlaceholder}`} aria-label={`图片位置 ${slot}`}>
-                <ImageIcon size={30} strokeWidth={1.4} aria-hidden="true" />
-                <span>图片位置 {slot}</span>
+              <div key={slot} className={`${xhsCss.carouselSlide} ${slot === 1 && hero ? "" : xhsCss.imagePlaceholder}`} aria-label={slot === 1 && hero ? hero.alt : `图片位置 ${slot}`}>
+                {slot === 1 && hero ? <><Image src={hero.image} alt={hero.alt} fill sizes="300px" loading="eager" className={xhsCss.heroPhoto} unoptimized /><span className={xhsCss.heroNote}>AI 示意图</span></> : <><ImageIcon size={30} strokeWidth={1.4} aria-hidden="true" /><span>图片位置 {slot}</span></>}
               </div>
             ))}
           </div>
