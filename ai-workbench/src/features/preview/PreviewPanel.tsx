@@ -84,6 +84,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const captureRef = useRef<HTMLDivElement>(null);
   const platformTabsRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
   const [liked, setLiked] = useState(false);
@@ -168,14 +169,77 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   }
 
   async function exportImage() {
-    if (!captureRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(captureRef.current, { backgroundColor: "#f8f7f4", scale: 2, useCORS: true });
-    const link = document.createElement("a");
-    link.download = `${enterprise.name}-${PLATFORM_LABELS[activePlatform]}-${activeVersion}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    setNotice("预览长图已导出");
+    const target = captureRef.current;
+    if (!target || !content || isExporting) return;
+    const filename = `${enterprise.name}-${PLATFORM_LABELS[activePlatform]}-${activeVersion}.png`.replace(/[<>:"/\\|?*]/g, "_");
+    setIsExporting(true);
+    try {
+      // The picker must open during the click gesture, before rendering the image.
+      let fileHandle: FileSystemFileHandle | null = null;
+      const pickerWindow = window as Window & { showSaveFilePicker?: (options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandle> };
+      if (pickerWindow.showSaveFilePicker) {
+        try {
+          fileHandle = await pickerWindow.showSaveFilePicker({ suggestedName: filename, types: [{ description: "PNG 图片", accept: { "image/png": [".png"] } }] });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          // Embedded browsers may block the picker; use their normal download flow.
+        }
+      }
+
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const innerScroller = target.querySelector<HTMLElement>(`.${previewCss.xhsContent}`);
+      const innerOverflow = innerScroller ? Math.max(0, innerScroller.scrollHeight - innerScroller.clientHeight) : 0;
+      const captureHeight = target.scrollHeight + innerOverflow;
+      const canvas = await html2canvas(target, {
+        backgroundColor: "#f8f7f4",
+        scale: 2,
+        useCORS: true,
+        height: captureHeight,
+        windowHeight: Math.max(window.innerHeight, captureHeight),
+        onclone: (_document, clonedTarget) => {
+          if (innerScroller) {
+            const phone = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsPhone}`);
+            const screen = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsScreen}`);
+            const content = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsContent}`);
+            if (phone) phone.style.height = "auto";
+            if (screen) screen.style.height = "auto";
+            if (content) {
+              content.style.flex = "none";
+              content.style.height = "auto";
+              content.style.overflow = "visible";
+              content.scrollTop = 0;
+            }
+          }
+          clonedTarget.style.flex = "none";
+          clonedTarget.style.height = `${captureHeight}px`;
+          clonedTarget.style.maxHeight = "none";
+          clonedTarget.style.overflow = "visible";
+          clonedTarget.scrollTop = 0;
+        },
+      });
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("PNG conversion failed")), "image/png"));
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setNotice("预览长图已保存");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        setNotice("预览长图已下载");
+      }
+    } catch (error) {
+      console.error("Preview image export failed", error);
+      setNotice("导出失败，请重试");
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   return (
@@ -199,7 +263,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
-        <button onClick={exportImage} disabled={!content}><Download size={16} /> 导出长图</button>
+        <button onClick={exportImage} disabled={!content || isExporting}><Download size={16} /> {isExporting ? "导出中…" : "导出长图"}</button>
         <button className="schedule-action" onClick={onSchedule} disabled={!content}><Send size={16} /> 推送日历</button>
       </div>
       {notice && <p className="action-notice" role="status">{notice}</p>}
