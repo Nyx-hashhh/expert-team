@@ -44,12 +44,40 @@ const DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: st
   "navel-orange": { image: navelOrangeHero, alt: "新鲜脐橙产品场景示意图" },
 };
 
+type PreviewLanguage = "zh" | "en";
+
+const ENGLISH_LOCATIONS: Record<string, string> = {
+  "spring-tea": "Anji, Zhejiang",
+  "heritage-town": "Jingdezhen, Jiangxi",
+  "navel-orange": "Ganzhou, Jiangxi",
+};
+
+const ENGLISH_HERO_ALTS: Record<string, string> = {
+  "spring-tea": "Spring tea leaves and brewed tea",
+  "heritage-town": "Traditional pottery experience in an old town",
+  "navel-orange": "Fresh navel oranges",
+};
+
+function previewLanguage(content: ContentVersion, enterprise: Enterprise): PreviewLanguage {
+  const copy = `${content.title} ${content.body} ${content.hashtags.join(" ")}`
+    .replaceAll(enterprise.name, "")
+    .replaceAll(enterprise.location, "");
+  const chineseCharacters = copy.match(/[\u3400-\u9fff]/g)?.length ?? 0;
+  const englishWords = copy.match(/[a-z]+/gi)?.length ?? 0;
+  return chineseCharacters > englishWords ? "zh" : "en";
+}
+
+function previewLocation(enterprise: Enterprise, language: PreviewLanguage): string {
+  if (language === "zh" || !/[\u3400-\u9fff]/.test(enterprise.location)) return enterprise.location;
+  return ENGLISH_LOCATIONS[enterprise.id] ?? "";
+}
+
 const previewCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
 
-function DemoHero({ enterprise, creditClassName = "" }: { enterprise: Enterprise; creditClassName?: string }) {
+function DemoHero({ enterprise, creditClassName = "", language = "zh" }: { enterprise: Enterprise; creditClassName?: string; language?: PreviewLanguage }) {
   const hero = DEMO_HEROES[enterprise.id];
   if (!hero) return null;
-  return <><Image src={hero.image} alt={hero.alt} fill sizes="300px" loading="eager" className={previewCss.demoHeroImage} unoptimized /><small className={`${previewCss.demoHeroCredit} ${creditClassName}`}>AI 示意图</small></>;
+  return <><Image src={hero.image} alt={language === "zh" ? hero.alt : ENGLISH_HERO_ALTS[enterprise.id] ?? "Illustrative image"} fill sizes="300px" loading="eager" className={previewCss.demoHeroImage} unoptimized /><small className={`${previewCss.demoHeroCredit} ${creditClassName}`}>{language === "zh" ? "AI 示意图" : "AI illustration"}</small></>;
 }
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
@@ -87,7 +115,10 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     };
   }, [enterprise.id, activePlatform, activeVersion]);
 
-  useEffect(() => { setSlide(0); setLiked(false); setCollected(false); setExtraLikes(0); setBurstKey(0); setActiveShot(0); setPlaying(true); }, [content]);
+  useEffect(() => {
+    const reset = setTimeout(() => { setSlide(0); setLiked(false); setCollected(false); setExtraLikes(0); setBurstKey(0); setActiveShot(0); setPlaying(true); }, 0);
+    return () => clearTimeout(reset);
+  }, [content]);
   useEffect(() => {
     const list = platformTabsRef.current;
     const selected = list?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
@@ -357,52 +388,60 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
 }
 
 function RedditPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="reddit-shell"><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>Join</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · Posted by u/{enterprise.name.replaceAll(" ", "_")} · just now</div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.feedHero}><DemoHero enterprise={enterprise} /></div>}<p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> 24 Comments</span><span><Share2 size={14} /> Share</span><span>•••</span></footer></article></div></div>;
+  const language = previewLanguage(content, enterprise);
+  return <div className="reddit-shell" lang={language === "zh" ? "zh-CN" : "en"}><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>{language === "zh" ? "加入" : "Join"}</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · {language === "zh" ? `由 u/${enterprise.name.replaceAll(" ", "_")} 发布 · 刚刚` : `Posted by u/${enterprise.name.replaceAll(" ", "_")} · just now`}</div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.feedHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> {language === "zh" ? "24 条评论" : "24 Comments"}</span><span><Share2 size={14} /> {language === "zh" ? "分享" : "Share"}</span><span>•••</span></footer></article></div></div>;
 }
 
 function DiscordPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
+  const language = previewLanguage(content, enterprise);
+  const channel = language === "zh" ? "# 公告" : "# announcements";
+  return <div className="discord-shell" lang={language === "zh" ? "zh-CN" : "en"}><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong>{channel}</strong><small>{language === "zh" ? "官方消息、新品发布与社群动态" : "Official news, launches and community updates"}</small></header><div className="discord-thread"><div className="discord-date"><span>{language === "zh" ? "2026年11月4日" : "November 4, 2026"}</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>{language === "zh" ? "应用" : "APP"}</span><small>{language === "zh" ? "今天 9:41" : "Today at 9:41 AM"}</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">{language === "zh" ? `发送消息至 ${channel}` : `Message ${channel}`} <span>☺</span></div></div></div>;
 }
 
 function InstagramPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
   const [following, setFollowing] = useState(false);
-  const isChinese = /[\u3400-\u9fff]/.test(content.title);
-  return <div className="instagram-phone">
+  const language = previewLanguage(content, enterprise);
+  const isChinese = language === "zh";
+  const location = previewLocation(enterprise, language);
+  return <div className="instagram-phone" lang={isChinese ? "zh-CN" : "en"}>
     <div className={previewCss.igHead}><strong>Instagram</strong></div>
     <div className="instagram-profile">
       <span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span>
-      <div className={previewCss.igProfileName}><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div>
+      <div className={previewCss.igProfileName}><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong>{location && <small>{location}</small>}</div>
       <span className={previewCss.igProfileControls}>
         <button type="button" className={previewCss.igFollow} aria-pressed={following} onClick={() => setFollowing((value) => !value)}>{following ? (isChinese ? "已关注" : "Following") : (isChinese ? "关注" : "Follow")}</button>
-        <span className={previewCss.igTwoLineMenu} role="img" aria-label="更多选项"><i /><i /></span>
+        <span className={previewCss.igTwoLineMenu} role="img" aria-label={isChinese ? "更多选项" : "More options"}><i /><i /></span>
       </span>
     </div>
     <div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
-      {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
-      <span>01 / 03</span><div className={previewCss.instagramHeroText}><small>{enterprise.location}</small><strong>{content.title}</strong></div>
+      {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} language={language} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
+      <span>01 / 03</span><div className={previewCss.instagramHeroText}>{location && <small>{location}</small>}<strong>{content.title}</strong></div>
     </div>
-    <div className={previewCss.igActions} aria-label="模拟互动数据">
+    <div className={previewCss.igActions} aria-label={isChinese ? "模拟互动数据" : "Simulated engagement"}>
       <div className={previewCss.igMetrics}>
-        <button type="button" className={previewCss.igMetric} onClick={interaction.onLike} aria-label={`点赞 ${interaction.likeCount}`} aria-pressed={interaction.liked}><Heart fill={interaction.liked ? "#ed4956" : "none"} color={interaction.liked ? "#ed4956" : "currentColor"} aria-hidden="true" />{formatInstagramCount(interaction.likeCount)}</button>
-        <span className={previewCss.igMetric} aria-label={`评论 ${interaction.commentCount}`}><MessageCircle aria-hidden="true" />{formatInstagramCount(interaction.commentCount)}</span>
-        <span className={previewCss.igMetric} aria-label={`转发 ${interaction.repostCount}`}><Repeat2 aria-hidden="true" />{formatInstagramCount(interaction.repostCount)}</span>
-        <span className={previewCss.igMetric} aria-label={`分享 ${interaction.shareCount}`}><Send aria-hidden="true" />{formatInstagramCount(interaction.shareCount)}</span>
+        <button type="button" className={previewCss.igMetric} onClick={interaction.onLike} aria-label={`${isChinese ? "点赞" : "Like"} ${interaction.likeCount}`} aria-pressed={interaction.liked}><Heart fill={interaction.liked ? "#ed4956" : "none"} color={interaction.liked ? "#ed4956" : "currentColor"} aria-hidden="true" />{formatInstagramCount(interaction.likeCount)}</button>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "评论" : "Comments"} ${interaction.commentCount}`}><MessageCircle aria-hidden="true" />{formatInstagramCount(interaction.commentCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "转发" : "Reposts"} ${interaction.repostCount}`}><Repeat2 aria-hidden="true" />{formatInstagramCount(interaction.repostCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "分享" : "Shares"} ${interaction.shareCount}`}><Send aria-hidden="true" />{formatInstagramCount(interaction.shareCount)}</span>
       </div>
-      <button type="button" className={`${previewCss.igMetric} ${previewCss.igBookmarkMetric}`} onClick={interaction.onCollect} aria-label={`收藏 ${interaction.collectCount + Number(interaction.collected)}`} aria-pressed={interaction.collected}><Bookmark fill={interaction.collected ? "currentColor" : "none"} aria-hidden="true" />{formatInstagramCount(interaction.collectCount + Number(interaction.collected))}</button>
+      <button type="button" className={`${previewCss.igMetric} ${previewCss.igBookmarkMetric}`} onClick={interaction.onCollect} aria-label={`${isChinese ? "收藏" : "Save"} ${interaction.collectCount + Number(interaction.collected)}`} aria-pressed={interaction.collected}><Bookmark fill={interaction.collected ? "currentColor" : "none"} aria-hidden="true" />{formatInstagramCount(interaction.collectCount + Number(interaction.collected))}</button>
     </div>
     <div className="instagram-caption"><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>{isChinese ? `查看全部 ${formatInstagramCount(interaction.commentCount)} 条评论 · 刚刚` : `View all ${formatInstagramCount(interaction.commentCount)} comments · just now`}</small></div>
   </div>;
 }
 
 function TikTokPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="tiktok-phone">
-    <div className="tiktok-top"><span>Following</span><strong>For You</strong></div>
+  const language = previewLanguage(content, enterprise);
+  const isChinese = language === "zh";
+  const location = previewLocation(enterprise, language);
+  return <div className="tiktok-phone" lang={isChinese ? "zh-CN" : "en"}>
+    <div className="tiktok-top"><span>{isChinese ? "关注" : "Following"}</span><strong>{isChinese ? "推荐" : "For You"}</strong></div>
     <div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}>
-      {DEMO_HEROES[enterprise.id] && <DemoHero enterprise={enterprise} creditClassName={previewCss.tiktokHeroCredit} />}
-      <div className="tiktok-scene-copy"><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong><span>▶ 00:15</span></div>
+      {DEMO_HEROES[enterprise.id] && <DemoHero enterprise={enterprise} language={language} creditClassName={previewCss.tiktokHeroCredit} />}
+      <div className="tiktok-scene-copy">{location && <small>{isChinese ? `来自 ${location}` : `FROM ${location.toUpperCase()}`}</small>}<strong>{content.title}</strong><span>▶ 00:15</span></div>
     </div>
-    <div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>Share</small></span></div>
-    <div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ original sound · {enterprise.name}</span></div>
-    <nav><span>⌂<small>Home</small></span><span>⌕<small>Discover</small></span><b>＋</b><span>▣<small>Inbox</small></span><span>♙<small>Profile</small></span></nav>
+    <div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>{isChinese ? "分享" : "Share"}</small></span></div>
+    <div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ {isChinese ? "原声" : "original sound"} · {enterprise.name}</span></div>
+    <nav><span>⌂<small>{isChinese ? "首页" : "Home"}</small></span><span>⌕<small>{isChinese ? "发现" : "Discover"}</small></span><b>＋</b><span>▣<small>{isChinese ? "收件箱" : "Inbox"}</small></span><span>♙<small>{isChinese ? "个人主页" : "Profile"}</small></span></nav>
   </div>;
 }

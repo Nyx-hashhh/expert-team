@@ -5,15 +5,18 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
   const goal = request.goal.trim() || "把品牌的好故事分享给更多人";
   const brand = enterprise.name;
   const tag = enterprise.industry.replaceAll(" ", "");
-  const instagramUsesChinese = /中文|汉语/.test(goal) || (!/英文|英语|\benglish\b/i.test(goal) && /[\u3400-\u9fff]/.test(goal));
-  const instagramGoal = goal
+  const foreignUsesChinese = /中文|汉语/.test(goal) || (!/英文|英语|\benglish\b/i.test(goal) && /[\u3400-\u9fff]/.test(goal));
+  const foreignGoal = goal
     .replace(/^(?:请)?(?:用|使用)(?:中文|汉语|英文|英语)(?:写|撰写|输出)?[：:,，。;；\s]*/u, "")
     .replace(/^(?:please\s+)?(?:write|respond)\s+in\s+(?:english|chinese)[.:,;\s]*/i, "")
     .replace(/[。.!！?？]+$/u, "")
     .trim();
-  const englishGoal = /[\u3400-\u9fff]/.test(instagramGoal) ? "" : instagramGoal;
+  const englishGoal = /[\u3400-\u9fff]/.test(foreignGoal) ? "" : foreignGoal;
+  const englishProduct = /[\u3400-\u9fff]/.test(product) ? "" : product;
   const englishFocus = englishGoal.replace(/^(?:promote|showcase|highlight|introduce|feature)\s+/i, "");
   const englishFocusSentence = englishFocus !== englishGoal ? `Discover ${englishFocus.charAt(0).toLowerCase()}${englishFocus.slice(1)}.` : englishGoal ? `${englishGoal}.` : "";
+  const englishLocation: Record<string, string> = { "spring-tea": "Anji, Zhejiang", "heritage-town": "Jingdezhen, Jiangxi", "navel-orange": "Ganzhou, Jiangxi" };
+  const locationEn = /[\u3400-\u9fff]/.test(enterprise.location) ? englishLocation[enterprise.id] : enterprise.location;
   const xiaohongshu: PlatformVersions = {
     A: {
       title: `谁懂！把${enterprise.industry}带进日常的快乐`,
@@ -60,39 +63,61 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
       ],
     },
   };
-  const reddit: PlatformVersions = {
+  const reddit: PlatformVersions = foreignUsesChinese ? {
     A: {
-      title: `We are ${brand}, a small ${enterprise.industry} brand from ${enterprise.location} — AMA`,
-      body: `Hi r/smallbusiness! We are building ${brand} in ${enterprise.location}, and our focus is simple: ${product}\n\nOur next goal is to ${goal}. We would love honest feedback from this community: what would you want to know before trying a brand like ours? No hard sell — we are here to listen and learn.`,
+      title: `我们是${brand}，欢迎聊聊小品牌的成长`,
+      body: `大家好，我们是${brand}。我们正在探索怎样把认真做出的产品介绍给更多人。${product}\n\n${foreignGoal}。如果你第一次接触一个小品牌，最想了解什么？欢迎直接提问，我们会认真回复。`,
+      hashtags: ["r/smallbusiness", "讨论", "品牌故事"],
+    },
+    B: {
+      title: `什么样的本地品牌值得你支持？`,
+      body: `我们在经营${brand}时一直思考这个问题。品牌的故事始于${enterprise.location}，而产品的细节也值得被看见：${product}\n\n${foreignGoal}。你会因为什么信任一个刚认识的小品牌？`,
+      hashtags: ["r/Entrepreneur", "提问", "小企业"],
+    },
+  } : {
+    A: {
+      title: `Meet ${brand} — ask us anything`,
+      body: `Hi r/smallbusiness! We are building ${brand}${locationEn ? ` in ${locationEn}` : ""}, and we would love to hear from this community.${englishProduct ? `\n\n${englishProduct}` : ""}${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nWhat would you want to know before trying a brand like ours? We are here to listen and learn.`,
       hashtags: ["r/smallbusiness", "Discussion", "Founder story"],
     },
     B: {
-      title: `What makes a local ${enterprise.industry} brand worth supporting?`,
-      body: `We have been thinking about this while growing ${brand}. For us, it comes down to where the product comes from, who makes it, and whether the quality holds up.\n\nOur story starts in ${enterprise.location}: ${product}\n\nWe are currently working to ${goal}. What earns your trust when you discover an unfamiliar independent brand?`,
+      title: "What makes a local brand worth supporting?",
+      body: `We have been thinking about this while growing ${brand}. For us, it comes down to knowing the people behind a product and whether it earns your trust.${locationEn ? ` Our story starts in ${locationEn}.` : ""}${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nWhat matters most to you when you discover an independent brand?`,
       hashtags: ["r/Entrepreneur", "Question", "Small business"],
     },
   };
-  const discord: PlatformVersions = {
+  const discord: PlatformVersions = foreignUsesChinese ? {
+    A: {
+      title: `✨ ${brand}的新消息`,
+      body: `大家好！想和社群分享我们最近在做的事。\n\n${product}\n\n${foreignGoal}。有什么想了解的，欢迎在讨论区留言。`,
+      hashtags: ["#公告", "#新品消息", "#社群"],
+    },
+    B: {
+      title: `${brand}社群抢先看`,
+      body: `先把这个消息告诉大家 👀\n\n${brand}正在把来自${enterprise.location}的故事分享给更多人。${product}\n\n${foreignGoal}。如果想看幕后过程，欢迎留言告诉我们。`,
+      hashtags: ["#社群预览", "#幕后故事", "#交流"],
+    },
+  } : {
     A: {
       title: `✨ New from ${brand}`,
-      body: `Hey everyone! We are excited to share what we have been working on in ${enterprise.location}.\n\n**Why it is special**\n${product}\n\n**What is next**\n${goal}\n\nDrop your questions in the thread — our team will be here to chat.`,
+      body: `Hey everyone! We are excited to share what we have been working on${locationEn ? ` in ${locationEn}` : ""}.${englishProduct ? `\n\n${englishProduct}` : ""}${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nDrop your questions in the thread — our team will be here to chat.`,
       hashtags: ["#announcements", "#new-release", "#community"],
     },
     B: {
       title: `Community first look: ${brand}`,
-      body: `You are getting the first look before anyone else 👀\n\n${brand} is our way of sharing a piece of ${enterprise.location} with more people. ${product}\n\nWe are now preparing to ${goal}. React with 🌿 if you want a behind-the-scenes tour, or reply with what you would like us to show next.`,
+      body: `You are getting the first look before anyone else 👀\n\nHere is a closer look at the people and care behind ${brand}.${locationEn ? ` Our story starts in ${locationEn}.` : ""}${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nReact with 🌿 if you want a behind-the-scenes tour, or reply with what you would like to see next.`,
       hashtags: ["#community-preview", "#behind-the-scenes", "#feedback"],
     },
   };
-  const instagram: PlatformVersions = instagramUsesChinese ? {
+  const instagram: PlatformVersions = foreignUsesChinese ? {
     A: {
       title: `把${enterprise.location}的好味道带回家`,
-      body: `${brand}来自${enterprise.location}。${product}\n\n${instagramGoal}。喜欢当季好物的话，欢迎留言交流。`,
+      body: `${brand}来自${enterprise.location}。${product}\n\n${foreignGoal}。喜欢当季好物的话，欢迎留言交流。`,
       hashtags: [`#${tag}`, "#当季好物", "#产地直达"],
     },
     B: {
       title: `从产地到日常，认识${brand}`,
-      body: `想知道一份好产品从哪里来？走进${enterprise.location}，看看${brand}背后的用心。${product}\n\n${instagramGoal}。你最想了解哪个细节？欢迎在评论区告诉我们。`,
+      body: `想知道一份好产品从哪里来？走进${enterprise.location}，看看${brand}背后的用心。${product}\n\n${foreignGoal}。你最想了解哪个细节？欢迎在评论区告诉我们。`,
       hashtags: [`#${tag}`, "#产地故事", "#发现好物"],
     },
   } : {
@@ -107,25 +132,46 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
       hashtags: ["#BrandStory", "#BehindTheScenes", "#IndependentBrand", "#ShopSmall"],
     },
   };
-  const tiktok: PlatformVersions = {
+  const tiktok: PlatformVersions = foreignUsesChinese ? {
     A: {
-      title: `POV: you just found a hidden gem from ${enterprise.location}`,
-      body: `Hook: Stop scrolling — this is not your usual ${enterprise.industry} brand.\nPayoff: ${product}\nCTA: Follow ${brand} and watch the story unfold.`,
+      title: `认识来自${enterprise.location}的${brand}`,
+      body: `开场：先看看这个产品的细节。\n亮点：${product}\n结尾：关注${brand}，了解更多品牌故事。`,
+      hashtags: ["#小品牌", "#发现好物", "#品牌故事"],
+      storyboard: [
+        { timeRange: "0–2秒", shot: "产品细节特写，镜头快速推进", voiceover: `先来认识${brand}。`, bgm: "轻快节奏，产品出现时切入重拍" },
+        { timeRange: "2–8秒", shot: "产地、制作过程与产品细节快速切换", voiceover: product, bgm: "画面跟随节拍切换" },
+        { timeRange: "8–15秒", shot: "展示使用场景，以品牌画面收尾", voiceover: `${foreignGoal}。关注我们，继续了解。`, bgm: "温暖收束" },
+      ],
+    },
+    B: {
+      title: `${brand}的15秒故事`,
+      body: `开场：故事从${enterprise.location}开始。\n中段：看见产品背后的人与细节。\n结尾：你会想试试吗？欢迎留言。`,
+      hashtags: ["#认识品牌", "#产地故事", "#好物分享"],
+      storyboard: [
+        { timeRange: "0–3秒", shot: "从一个有趣的细节开始，字幕抛出问题", voiceover: "一个好产品，能让你记住什么？", bgm: "好奇感开场音效" },
+        { timeRange: "3–10秒", shot: "展示制作过程、当地环境和成品", voiceover: `${brand}把${enterprise.location}的故事放进每个细节。`, bgm: "自然节奏逐渐增强" },
+        { timeRange: "10–15秒", shot: "产品递到手中，镜头定格", voiceover: `${foreignGoal}。你会想试试吗？`, bgm: "提问前短暂停顿" },
+      ],
+    },
+  } : {
+    A: {
+      title: `A closer look at ${brand}`,
+      body: `Hook: Stop scrolling and take a closer look.\nStory: ${englishProduct || `Meet the people and details behind ${brand}.`}\nNext: ${englishFocusSentence || "Follow along for more."}`,
       hashtags: ["#SmallBusinessTok", "#HiddenGem", "#BrandStory"],
       storyboard: [
-        { timeRange: "0–2s", shot: "Macro product reveal with a fast push-in", voiceover: `Stop scrolling — meet ${brand}.`, bgm: "Trending upbeat audio, beat drop on reveal" },
-        { timeRange: "2–8s", shot: "Quick cuts of the place, process and product details", voiceover: `${product}`, bgm: "Keep cuts synced to the beat" },
-        { timeRange: "8–15s", shot: "Product in use, then logo and comment prompt", voiceover: `${goal}. Follow to see what happens next.`, bgm: "Warm lift and clean finish" },
+        { timeRange: "0–2s", shot: "Close-up reveal with a fast push-in", voiceover: `Stop scrolling — meet ${brand}.`, bgm: "Upbeat audio, beat drop on reveal" },
+        { timeRange: "2–8s", shot: "Quick cuts of the place, process and product details", voiceover: "Every detail has a story.", bgm: "Keep cuts synced to the beat" },
+        { timeRange: "8–15s", shot: "Product in use, then logo and comment prompt", voiceover: `${englishFocusSentence ? `${englishFocusSentence} ` : ""}Follow to see more.`, bgm: "Warm lift and clean finish" },
       ],
     },
     B: {
       title: `The 15-second story behind ${brand}`,
-      body: `Hook: This started in ${enterprise.location}.\nStory: One detail, one maker, one reason it matters.\nCTA: Would you try it? Comment below.`,
+      body: `Hook: ${locationEn ? `This started in ${locationEn}.` : "Every brand starts somewhere."}\nStory: One detail, one maker, one reason it matters.\nNext: What would you like to know? Comment below.`,
       hashtags: ["#TikTokMadeMeBuyIt", "#MeetTheMaker", "#ShopSmall"],
       storyboard: [
-        { timeRange: "0–3s", shot: "Open on a surprising detail, text overlay asks a question", voiceover: `What if ${enterprise.industry} could feel this personal?`, bgm: "Curious opening sting" },
-        { timeRange: "3–10s", shot: "Maker hands, local scenery and finished product", voiceover: `${brand} brings a piece of ${enterprise.location} into every detail.`, bgm: "Organic rhythmic build" },
-        { timeRange: "10–15s", shot: "Hand-off moment and direct-to-camera close", voiceover: `${goal}. Would you try it?`, bgm: "Beat pause for the question" },
+        { timeRange: "0–3s", shot: "Open on a surprising detail, text overlay asks a question", voiceover: "What makes a product feel personal?", bgm: "Curious opening sting" },
+        { timeRange: "3–10s", shot: "Maker hands, local scenery and finished product", voiceover: `${brand} brings care to every detail.`, bgm: "Organic rhythmic build" },
+        { timeRange: "10–15s", shot: "Hand-off moment and direct-to-camera close", voiceover: `${englishFocusSentence ? `${englishFocusSentence} ` : ""}Would you try it?`, bgm: "Beat pause for the question" },
       ],
     },
   };
