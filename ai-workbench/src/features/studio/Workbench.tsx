@@ -13,6 +13,7 @@ import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { Button } from "@/components/ui/button";
 
 const enterprises = enterprisesData as Enterprise[];
+const isDevelopment = process.env.NODE_ENV === "development";
 const typeLabels: Record<MaterialType, string> = { product: "产品参数", story: "品牌故事", reference: "参考文案" };
 const tones = ["闺蜜安利", "专业品鉴", "年轻活力", "温暖叙事"];
 const platformMarks: Record<Platform, string> = { xiaohongshu: "小", weibo: "微", douyin: "抖", reddit: "r/", discord: "D", instagram: "IG", tiktok: "♪" };
@@ -23,7 +24,7 @@ const platformDescriptions: Record<Platform, string> = {
   reddit: "社区讨论帖",
   discord: "社群公告互动",
   instagram: "视觉故事 Caption",
-  tiktok: "英文短视频脚本",
+  tiktok: "短视频脚本 · 跟随诉求语言",
 };
 
 export function Workbench() {
@@ -105,7 +106,7 @@ export function Workbench() {
     if (isGenerating) return;
     if (!goal.trim()) { setNotice("请先填写本次宣发诉求"); return; }
     if (!platforms.length) { setNotice("请至少选择一个目标平台"); return; }
-    if (quota <= 0) { setNotice("试用额度已用完"); return; }
+    if (!isDevelopment && quota <= 0) { setNotice("试用额度已用完"); return; }
     setIsGenerating(true); setNotice("正在提炼故事切口与真实表达…");
     const translated = creativeBrief ? null : await requestCreativeBrief();
     const brief = creativeBrief ?? translated?.brief;
@@ -123,7 +124,7 @@ export function Workbench() {
     } catch { next = buildFallback(request, enterprise); }
     finally { clearTimeout(timeout); }
     setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
-    setQuota(quota - 1); writeLocal("quota-v2", quota - 1);
+    if (!isDevelopment) { setQuota(quota - 1); writeLocal("quota-v2", quota - 1); }
     setIsGenerating(false);
     setNotice(next.source === "fallback" ? "已加载本地优质演示结果" : "已生成各平台 A/B 创意文案");
   }
@@ -151,7 +152,7 @@ export function Workbench() {
       <div className="workspace-label">工作空间</div><div className="workspace-card"><div className="workspace-avatar">企</div><div><strong>企业增长工作台</strong><small>本地演示空间</small></div></div>
       <div className="nav-label">创作工作区</div><nav className="side-nav" aria-label="主导航"><Link className="selected" href="/"><WandSparkles size={18} /> 多平台创作 <ChevronRight size={16} /></Link><Link href="/calendar"><CalendarDays size={18} /> 发布日历</Link><Link href="/analytics"><BarChart3 size={18} /> 传播数据看板</Link></nav>
       <div className="nav-label secondary-label">资源管理</div><nav className="side-nav"><a href="#knowledge"><BookOpen size={18} /> 企业素材库</a><a href="#reference"><FileText size={18} /> 创作指南</a></nav>
-      <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> 企业试用额度</span><strong>{quota}/20 次</strong></div><div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div><p>生成一次，解锁各平台的双版本创意。</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
+      <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> {isDevelopment ? "开发验收模式" : "企业试用额度"}</span><strong>{isDevelopment ? "不限次数" : `${quota}/20 次`}</strong></div>{!isDevelopment && <div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div>}<p>{isDevelopment ? "可反复生成内容，优先核验界面。" : "生成一次，解锁各平台的双版本创意。"}</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
     </aside>
     <main className="main-column"><header className="topbar"><div className="breadcrumb">工作空间 <ChevronRight size={14} /> <strong>多平台创作</strong></div><div className="topbar-right"><span className="topbar-search"><Search size={15} /> 搜索功能</span><span className="topbar-user">主</span></div></header>
       <div className="studio-content"><div className="page-intro"><div><div className="intro-kicker"><Sparkles size={15} /> AI 驱动的内容增长工作台</div><h1>让好故事，抵达每一个平台<span>✦</span></h1><p>汇集企业知识，一次创作，多平台精准转译。</p></div><div className="intro-decoration"><span>创意</span><span>策略</span><span>增长</span></div></div>

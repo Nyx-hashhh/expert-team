@@ -1,8 +1,12 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCircle, Music2, Pause, Play, Send, Share2, UserPlus } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import springTeaHero from "./hero-spring-tea.png";
+import heritageTownHero from "./hero-heritage-town.png";
+import navelOrangeHero from "./hero-navel-orange.png";
 import styles from "./preview.module.css";
 
 interface PreviewPanelProps {
@@ -32,17 +36,61 @@ function formatCount(value: number): string {
   return String(value);
 }
 
-const XHS_COMMENTS = [
-  { user: "山间小铺", tone: "#5a8a63", text: "这个系列一直拍得很有温度，蹲一个新品！" },
-  { user: "柠檬气泡水", tone: "#b98a4d", text: "马住了，周末就带朋友去实地看看。" },
-];
+function formatInstagramCount(value: number): string {
+  return value >= 10000 ? `${(value / 1000).toFixed(1)}K` : value.toLocaleString("en-US");
+}
+
+const DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
+  "spring-tea": { image: springTeaHero, alt: "春茶茶汤与鲜叶场景示意图" },
+  "heritage-town": { image: heritageTownHero, alt: "古镇陶艺体验场景示意图" },
+  "navel-orange": { image: navelOrangeHero, alt: "新鲜脐橙产品场景示意图" },
+};
+
+type PreviewLanguage = "zh" | "en";
+
+const ENGLISH_LOCATIONS: Record<string, string> = {
+  "spring-tea": "Anji, Zhejiang",
+  "heritage-town": "Jingdezhen, Jiangxi",
+  "navel-orange": "Ganzhou, Jiangxi",
+};
+
+const ENGLISH_HERO_ALTS: Record<string, string> = {
+  "spring-tea": "Spring tea leaves and brewed tea",
+  "heritage-town": "Traditional pottery experience in an old town",
+  "navel-orange": "Fresh navel oranges",
+};
+
+function previewLanguage(content: ContentVersion, enterprise: Enterprise): PreviewLanguage {
+  const copy = `${content.title} ${content.body} ${content.hashtags.join(" ")}`
+    .replaceAll(enterprise.name, "")
+    .replaceAll(enterprise.location, "");
+  const chineseCharacters = copy.match(/[\u3400-\u9fff]/g)?.length ?? 0;
+  const englishWords = copy.match(/[a-z]+/gi)?.length ?? 0;
+  return chineseCharacters > englishWords ? "zh" : "en";
+}
+
+function previewLocation(enterprise: Enterprise, language: PreviewLanguage): string {
+  if (language === "zh" || !/[\u3400-\u9fff]/.test(enterprise.location)) return enterprise.location;
+  return ENGLISH_LOCATIONS[enterprise.id] ?? "";
+}
+
+const previewCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
+
+function DemoHero({ enterprise, creditClassName = "", language = "zh" }: { enterprise: Enterprise; creditClassName?: string; language?: PreviewLanguage }) {
+  const hero = DEMO_HEROES[enterprise.id];
+  if (!hero) return null;
+  return <><Image src={hero.image} alt={language === "zh" ? hero.alt : ENGLISH_HERO_ALTS[enterprise.id] ?? "Illustrative image"} fill sizes="300px" loading="eager" className={previewCss.demoHeroImage} unoptimized /><small className={`${previewCss.demoHeroCredit} ${creditClassName}`}>{language === "zh" ? "AI 示意图" : "AI illustration"}</small></>;
+}
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, previewWidth, onPlatformChange, onVersionChange, onPreviewWidthChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
+  const platformTabsRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [collected, setCollected] = useState(false);
   const [extraLikes, setExtraLikes] = useState(0);
   const [burstKey, setBurstKey] = useState(0);
   const [activeShot, setActiveShot] = useState(0);
@@ -74,12 +122,23 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     const reset = setTimeout(() => {
       setSlide(0);
       setLiked(false);
+      setCollected(false);
       setExtraLikes(0);
+      setBurstKey(0);
       setActiveShot(0);
       setPlaying(true);
     }, 0);
     return () => clearTimeout(reset);
   }, [content]);
+  useEffect(() => {
+    const list = platformTabsRef.current;
+    const selected = list?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
+    if (!list || !selected) return;
+    const listBounds = list.getBoundingClientRect();
+    const selectedBounds = selected.getBoundingClientRect();
+    if (selectedBounds.left < listBounds.left) list.scrollBy({ left: selectedBounds.left - listBounds.left, behavior: "smooth" });
+    else if (selectedBounds.right > listBounds.right) list.scrollBy({ left: selectedBounds.right - listBounds.right, behavior: "smooth" });
+  }, [activePlatform]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => {
     if (shots.length <= 1 || !playing) return;
@@ -97,6 +156,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     slide,
     onSlideChange: setSlide,
     liked,
+    collected,
     likeCount: metrics.likes + extraLikes,
     collectCount: metrics.collects,
     commentCount: metrics.comments,
@@ -106,6 +166,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     activeShot,
     playing,
     onLike: toggleLike,
+    onCollect: () => setCollected((value) => !value),
     onShotChange: setActiveShot,
     onTogglePlay: () => setPlaying((value) => !value),
   };
@@ -118,14 +179,77 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   }
 
   async function exportImage() {
-    if (!captureRef.current) return;
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(captureRef.current, { backgroundColor: "#f8f7f4", scale: 2, useCORS: true });
-    const link = document.createElement("a");
-    link.download = `${enterprise.name}-${PLATFORM_LABELS[activePlatform]}-${activeVersion}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    setNotice("预览长图已导出");
+    const target = captureRef.current;
+    if (!target || !content || isExporting) return;
+    const filename = `${enterprise.name}-${PLATFORM_LABELS[activePlatform]}-${activeVersion}.png`.replace(/[<>:"/\\|?*]/g, "_");
+    setIsExporting(true);
+    try {
+      // The picker must open during the click gesture, before rendering the image.
+      let fileHandle: FileSystemFileHandle | null = null;
+      const pickerWindow = window as Window & { showSaveFilePicker?: (options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }) => Promise<FileSystemFileHandle> };
+      if (pickerWindow.showSaveFilePicker) {
+        try {
+          fileHandle = await pickerWindow.showSaveFilePicker({ suggestedName: filename, types: [{ description: "PNG 图片", accept: { "image/png": [".png"] } }] });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          // Embedded browsers may block the picker; use their normal download flow.
+        }
+      }
+
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const innerScroller = target.querySelector<HTMLElement>(`.${previewCss.xhsContent}`);
+      const innerOverflow = innerScroller ? Math.max(0, innerScroller.scrollHeight - innerScroller.clientHeight) : 0;
+      const captureHeight = target.scrollHeight + innerOverflow;
+      const canvas = await html2canvas(target, {
+        backgroundColor: "#f8f7f4",
+        scale: 2,
+        useCORS: true,
+        height: captureHeight,
+        windowHeight: Math.max(window.innerHeight, captureHeight),
+        onclone: (_document, clonedTarget) => {
+          if (innerScroller) {
+            const phone = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsPhone}`);
+            const screen = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsScreen}`);
+            const content = clonedTarget.querySelector<HTMLElement>(`.${previewCss.xhsContent}`);
+            if (phone) phone.style.height = "auto";
+            if (screen) screen.style.height = "auto";
+            if (content) {
+              content.style.flex = "none";
+              content.style.height = "auto";
+              content.style.overflow = "visible";
+              content.scrollTop = 0;
+            }
+          }
+          clonedTarget.style.flex = "none";
+          clonedTarget.style.height = `${captureHeight}px`;
+          clonedTarget.style.maxHeight = "none";
+          clonedTarget.style.overflow = "visible";
+          clonedTarget.scrollTop = 0;
+        },
+      });
+      const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("PNG conversion failed")), "image/png"));
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setNotice("预览长图已保存");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        setNotice("预览长图已下载");
+      }
+    } catch (error) {
+      console.error("Preview image export failed", error);
+      setNotice("导出失败，请重试");
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   function startResize(event: React.PointerEvent<HTMLDivElement>) {
@@ -166,10 +290,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <div><span className="eyebrow">LIVE PREVIEW</span><h2>多端拟真预览</h2></div>
         <span className="live-pill"><span /> 实时同步</span>
       </div>
-      <div className="preview-tabs" role="tablist" aria-label="预览平台">
-        {PLATFORMS.map((platform) => (
-          <button key={platform} role="tab" aria-selected={activePlatform === platform} className={activePlatform === platform ? "active" : ""} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
-        ))}
+      <div className={previewCss.platformTabStrip}>
+        <button type="button" className={previewCss.platformTabArrow} aria-label="向左查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: -180, behavior: "smooth" })}><ChevronLeft size={15} /></button>
+        <div className={`preview-tabs ${previewCss.platformTabTrack}`} ref={platformTabsRef} aria-label="预览平台，可横向滑动">
+          {PLATFORMS.map((platform) => (
+            <button key={platform} type="button" className={activePlatform === platform ? "active" : ""} aria-pressed={activePlatform === platform} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
+          ))}
+        </div>
+        <button type="button" className={previewCss.platformTabArrow} aria-label="向右查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight size={15} /></button>
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>
@@ -177,7 +305,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
-        <button onClick={exportImage} disabled={!content}><Download size={16} /> 导出长图</button>
+        <button onClick={exportImage} disabled={!content || isExporting}><Download size={16} /> {isExporting ? "导出中…" : "导出长图"}</button>
         <button className="schedule-action" onClick={onSchedule} disabled={!content}><Send size={16} /> 推送日历</button>
       </div>
       {notice && <p className="action-notice" role="status">{notice}</p>}
@@ -189,6 +317,7 @@ type PreviewInteraction = {
   slide: number;
   onSlideChange: (slide: number) => void;
   liked: boolean;
+  collected: boolean;
   likeCount: number;
   collectCount: number;
   commentCount: number;
@@ -198,86 +327,89 @@ type PreviewInteraction = {
   activeShot: number;
   playing: boolean;
   onLike: () => void;
+  onCollect: () => void;
   onShotChange: (index: number) => void;
   onTogglePlay: () => void;
 };
 
 function PlatformPreview({ platform, content, enterprise, interaction }: { platform: Platform; content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
   switch (platform) {
-    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} likeCount={interaction.likeCount} collectCount={interaction.collectCount} commentCount={interaction.commentCount} burstKey={interaction.burstKey} onLike={interaction.onLike} />;
+    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} collected={interaction.collected} likeCount={interaction.likeCount} collectCount={interaction.collectCount} burstKey={interaction.burstKey} onLike={interaction.onLike} onCollect={interaction.onCollect} />;
     case "weibo": return <WeiboPreview content={content} enterprise={enterprise} repostCount={interaction.repostCount} commentCount={interaction.commentCount} likeCount={interaction.likeCount} />;
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
     case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
-    case "instagram": return <InstagramPreview content={content} enterprise={enterprise} />;
+    case "instagram": return <InstagramPreview key={enterprise.id} content={content} enterprise={enterprise} interaction={interaction} />;
     case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
   }
 }
 
-function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, likeCount, collectCount, commentCount, burstKey, onLike }: {
+function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, collected, likeCount, collectCount, burstKey, onLike, onCollect }: {
   content: ContentVersion;
   enterprise: Enterprise;
   slide: number;
   onSlideChange: (slide: number) => void;
   liked: boolean;
+  collected: boolean;
   likeCount: number;
   collectCount: number;
-  commentCount: number;
   burstKey: number;
   onLike: () => void;
+  onCollect: () => void;
 }) {
-  const slides = [
-    { tag: enterprise.industry, title: enterprise.tagline, background: `linear-gradient(145deg, ${enterprise.accent}, #f3e7cc)` },
-    { tag: "本期主题", title: content.title, background: `linear-gradient(145deg, #2f4a38, ${enterprise.accent})` },
-    { tag: "品牌产地", title: `来自 ${enterprise.location}`, background: `linear-gradient(145deg, ${enterprise.accent}, #294034)` },
-  ];
+  // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
+  const xhsCss = previewCss;
+  const imageSlots = [1, 2, 3];
+  const hero = DEMO_HEROES[enterprise.id];
   return (
-    <div className="phone-frame">
-      <div className="phone-island" />
-      <div className="phone-screen">
-        <div className="phone-top"><span>9:41</span><span>●●● ▰</span></div>
-        <div className="post-top"><span>‹</span><span>{enterprise.name}</span><span>···</span></div>
-        <div className={styles.carousel} onDoubleClick={onLike} title="双击图片试试点赞">
-          <div className={styles.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
-            {slides.map((item, index) => (
-              <div key={`${item.tag}-${index}`} className={styles.carouselSlide} style={{ background: item.background }}>
-                <span className={styles.slideMark}>{item.tag}</span>
-                <strong className={styles.slideTitle}>{item.title}</strong>
+    <div className={xhsCss.xhsPhone}>
+      <div className={xhsCss.xhsScreen}>
+        <div className={xhsCss.xhsStatus}><span>9:41</span><span aria-hidden="true">●●● ▰</span></div>
+        <div className={xhsCss.xhsHeader}>
+          <ChevronLeft size={20} aria-hidden="true" />
+          <span className={xhsCss.xhsAvatar} aria-hidden="true"><UserRound size={17} /></span>
+          <strong>{enterprise.name}</strong>
+          <span className={xhsCss.xhsFollow}>关注</span>
+          <Share2 size={19} aria-label="分享图标" />
+        </div>
+        <div className={xhsCss.xhsContent}>
+        <div className={xhsCss.carousel} onDoubleClick={onLike} title="双击图片区域试试点赞">
+          <div className={xhsCss.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
+            {imageSlots.map((slot) => (
+              <div key={slot} className={`${xhsCss.carouselSlide} ${slot === 1 && hero ? "" : xhsCss.imagePlaceholder}`} aria-label={slot === 1 && hero ? hero.alt : `图片位置 ${slot}`}>
+                {slot === 1 && hero ? <><Image src={hero.image} alt={hero.alt} fill sizes="300px" loading="eager" className={xhsCss.heroPhoto} unoptimized /><span className={xhsCss.heroNote}>AI 示意图</span></> : <><ImageIcon size={30} strokeWidth={1.4} aria-hidden="true" /><span>图片位置 {slot}</span></>}
               </div>
             ))}
           </div>
-          <span className={styles.slideIndex}>{String(slide + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</span>
-          {burstKey > 0 && <Heart key={burstKey} size={64} className={styles.burst} color="#ff2442" fill="#ff2442" />}
-          <button type="button" className={`${styles.carouselArrow} ${styles.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + slides.length) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
-          <button type="button" className={`${styles.carouselArrow} ${styles.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
-          <div className={styles.carouselDots}>
-            {slides.map((item, index) => (
-              <button type="button" key={`dot-${item.tag}-${index}`} aria-label={`第 ${index + 1} 张`} className={index === slide ? styles.on : undefined} onClick={(event) => { event.stopPropagation(); onSlideChange(index); }} onDoubleClick={(event) => event.stopPropagation()} />
-            ))}
-          </div>
+          {burstKey > 0 && <Heart key={burstKey} size={64} className={xhsCss.burst} color="#ff2442" fill="#ff2442" />}
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + imageSlots.length) % imageSlots.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % imageSlots.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
         </div>
-        <div className="post-body">
-          <h3>{content.title}</h3>
-          <p>{content.body}</p>
-          <div className="hashtags">{content.hashtags.join("  ")}</div>
-          <div className={styles.metricRow}>
-            <button type="button" className={liked ? styles.on : undefined} onClick={onLike}><Heart size={17} color={liked ? "#ff2442" : undefined} fill={liked ? "#ff2442" : "none"} /> {formatCount(likeCount)}</button>
-            <button type="button"><Bookmark size={17} /> {formatCount(collectCount)}</button>
-            <button type="button"><MessageCircle size={17} /> {formatCount(commentCount)}</button>
-            <span className={styles.metricHint}>演示预览</span>
-          </div>
-          <div className="post-author"><span className="avatar">{enterprise.name.slice(0, 1)}</span><span>{enterprise.name}<small>刚刚发布 · 来自 {enterprise.location}</small></span></div>
-          <div className={styles.commentBlock}>
-            {XHS_COMMENTS.map((comment) => (
-              <div className={styles.comment} key={comment.user}>
-                <span className={styles.commentAvatar} style={{ background: comment.tone }}>{comment.user.slice(0, 1)}</span>
-                <div className={styles.commentMain}><div className={styles.commentUser}>{comment.user}</div><div className={styles.commentText}>{comment.text}</div></div>
-              </div>
-            ))}
-            <div className={styles.commentMore}>展开 {formatCount(commentCount)} 条评论</div>
-          </div>
+        <div className={xhsCss.carouselDots}>
+          {imageSlots.map((slot, index) => (
+            <button type="button" key={slot} aria-label={`第 ${slot} 张`} aria-current={index === slide ? "true" : undefined} className={index === slide ? xhsCss.on : undefined} onClick={() => onSlideChange(index)} />
+          ))}
         </div>
-        <div className="social-bar"><span>说点什么...</span><Heart size={19} /><Bookmark size={19} /><MessageCircle size={19} /></div>
+        <div className={xhsCss.xhsBody}>
+          <h3>{content.title || "标题将在这里显示"}</h3>
+          <p>{content.body || "正文将在这里显示"}</p>
+          {content.hashtags.length > 0 && <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>}
+          <div className={xhsCss.xhsMeta}>刚刚{enterprise.location ? ` · 来自 ${enterprise.location}` : ""} · 互动数据为模拟</div>
+          <section className={xhsCss.commentBlock} aria-label="评论区预留位置">
+            <div className={xhsCss.commentHeading}>评论</div>
+            <div className={xhsCss.commentEmpty}>
+              <span className={xhsCss.commentAvatar} aria-hidden="true"><UserRound size={16} /></span>
+              <span>发布后，评论将在这里显示</span>
+            </div>
+          </section>
+        </div>
+        </div>
+        <div className={xhsCss.xhsDock}>
+          <span className={xhsCss.xhsInput}>✎&nbsp; 说点什么</span>
+          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞" aria-pressed={liked}><Heart size={18} fill={liked ? "currentColor" : "none"} />{formatCount(likeCount)}</button>
+          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={onCollect} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
+          <span className={xhsCss.xhsDockCount}><MessageCircleMore size={20} strokeWidth={1.9} aria-hidden="true" />0</span>
+        </div>
       </div>
     </div>
   );
@@ -295,8 +427,8 @@ function WeiboPreview({ content, enterprise, repostCount, commentCount, likeCoun
       <div className="weibo-profile"><span className="avatar">{enterprise.name.slice(0, 1)}</span><div><strong>{enterprise.name} <span className="verified">V</span></strong><small>刚刚 · 来自微博网页版</small></div><span>···</span></div>
       <p>{content.body}</p>
       <div className="weibo-tags">{content.hashtags.join("  ")}</div>
-      <div className="weibo-grid">{["品牌故事", enterprise.industry, "好物分享", "匠心细节"].map((label, index) => <div key={label} style={{ backgroundColor: `${enterprise.accent}${index % 2 ? "55" : "88"}` }}>{label}</div>)}</div>
-      <div className={styles.hotComment}><b>@薄荷绿茶</b>：支持本土小品牌，这条文案是真的走心，已经转发给闺蜜了 <span>· {formatCount(Math.max(12, Math.round(likeCount / 6)))} 人赞</span></div>
+      <div className="weibo-grid">{["品牌故事", enterprise.industry, "好物分享", "匠心细节"].map((label, index) => <div key={label} className={index === 0 ? previewCss.weiboHeroTile : undefined} style={{ backgroundColor: `${enterprise.accent}${index % 2 ? "55" : "88"}` }}>{index === 0 && DEMO_HEROES[enterprise.id] ? <DemoHero enterprise={enterprise} /> : label}</div>)}</div>
+      <div className={previewCss.hotComment}><b>@薄荷绿茶</b>：支持本土小品牌，这条文案是真的走心，已经转发给闺蜜了 <span>· {formatCount(Math.max(12, Math.round(likeCount / 6)))} 人赞</span></div>
       <div className="weibo-footer">
         <span><Share2 size={16} /> 转发 {formatCount(repostCount)}</span>
         <span><MessageCircle size={16} /> 评论 {formatCount(commentCount)}</span>
@@ -322,34 +454,35 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
   const shots = content.storyboard ?? [];
   return (
     <div className="script-card">
-      <div className={styles.dyPlayer}>
-        <div className={styles.dyProgress}>{shots.map((shot, index) => <i key={shot.timeRange} className={index <= activeShot ? styles.on : undefined} />)}</div>
-        <div className={styles.dyCenter}>
-          <button type="button" className={styles.dyPlay} onClick={onTogglePlay} aria-label={playing ? "暂停分镜演示" : "播放分镜演示"}>{playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 3 }} />}</button>
-          <div className={styles.dyTitle}>{content.title}</div>
-          <div className={styles.dySub}>15 秒竖屏短视频 · 黄金前 3 秒钩子</div>
+      <div className={previewCss.dyPlayer}>
+        {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.videoHeroCredit} /><div className={previewCss.videoHeroShade} /></>}
+        <div className={previewCss.dyProgress}>{shots.map((shot, index) => <i key={shot.timeRange} className={index <= activeShot ? previewCss.on : undefined} />)}</div>
+        <div className={previewCss.dyCenter}>
+          <button type="button" className={previewCss.dyPlay} onClick={onTogglePlay} aria-label={playing ? "暂停分镜演示" : "播放分镜演示"}>{playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 3 }} />}</button>
+          <div className={previewCss.dyTitle}>{content.title}</div>
+          <div className={previewCss.dySub}>15 秒竖屏短视频 · 黄金前 3 秒钩子</div>
         </div>
-        <div className={styles.dyCaption}><b>@{enterprise.name}</b><small>{content.hashtags.join("  ")}</small></div>
-        <div className={styles.dyRail}>
-          <span className={styles.commentAvatar} style={{ background: enterprise.accent, width: 34, height: 34, fontSize: 13 }}>{enterprise.name.slice(0, 1)}</span>
-          <span className={styles.dyFollow}><UserPlus size={9} /></span>
-          <button type="button" className={styles.dyRailItem} onClick={onLike} aria-label="点赞"><Heart size={25} color={liked ? "#ff2c55" : "#fff"} fill={liked ? "#ff2c55" : "none"} />{formatCount(likeCount)}</button>
-          <span className={styles.dyRailItem}><MessageCircle size={25} />{formatCount(commentCount)}</span>
-          <span className={styles.dyRailItem}><Share2 size={25} />{formatCount(shareCount)}</span>
-          <span className={styles.dyDisc}><Music2 size={13} color="#cfe0d6" /></span>
+        <div className={previewCss.dyCaption}><b>@{enterprise.name}</b><small>{content.hashtags.join("  ")}</small></div>
+        <div className={previewCss.dyRail}>
+          <span className={previewCss.commentAvatar} style={{ background: enterprise.accent, width: 34, height: 34, fontSize: 13 }}>{enterprise.name.slice(0, 1)}</span>
+          <span className={previewCss.dyFollow}><UserPlus size={9} /></span>
+          <button type="button" className={previewCss.dyRailItem} onClick={onLike} aria-label="点赞"><Heart size={25} color={liked ? "#ff2c55" : "#fff"} fill={liked ? "#ff2c55" : "none"} />{formatCount(likeCount)}</button>
+          <span className={previewCss.dyRailItem}><MessageCircle size={25} />{formatCount(commentCount)}</span>
+          <span className={previewCss.dyRailItem}><Share2 size={25} />{formatCount(shareCount)}</span>
+          <span className={previewCss.dyDisc}><Music2 size={13} color="#cfe0d6" /></span>
         </div>
       </div>
       <div className="script-section"><h4>核心口播</h4><p>{content.body}</p></div>
       <div className="script-section">
-        <h4>分镜脚本<span className={styles.demoTag}>{playing ? "自动演示中" : "已暂停"}</span></h4>
-        <div className={styles.shotListV2}>
+        <h4>分镜脚本<span className={previewCss.demoTag}>{playing ? "自动演示中" : "已暂停"}</span></h4>
+        <div className={previewCss.shotListV2}>
           {shots.map((shot, index) => (
-            <button type="button" key={shot.timeRange} className={`${styles.shotItem} ${index === activeShot ? styles.shotOn : ""}`} style={index === activeShot ? { borderColor: enterprise.accent } : undefined} onClick={() => onShotChange(index)}>
-              <span className={styles.shotTime}>{shot.timeRange}</span>
-              <span className={styles.shotMain}>
+            <button type="button" key={shot.timeRange} className={`${previewCss.shotItem} ${index === activeShot ? previewCss.shotOn : ""}`} style={index === activeShot ? { borderColor: enterprise.accent } : undefined} onClick={() => onShotChange(index)}>
+              <span className={previewCss.shotTime}>{shot.timeRange}</span>
+              <span className={previewCss.shotMain}>
                 <strong>{shot.shot}</strong>
-                <span className={styles.shotText}>🎙 {shot.voiceover}</span>
-                <small className={styles.shotBgm}>♫ {shot.bgm}</small>
+                <span className={previewCss.shotText}>🎙 {shot.voiceover}</span>
+                <small className={previewCss.shotBgm}>♫ {shot.bgm}</small>
               </span>
             </button>
           ))}
@@ -361,17 +494,60 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
 }
 
 function RedditPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="reddit-shell"><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>Join</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · Posted by u/{enterprise.name.replaceAll(" ", "_")} · just now</div><h3>{content.title}</h3><p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> 24 Comments</span><span><Share2 size={14} /> Share</span><span>•••</span></footer></article></div></div>;
+  const language = previewLanguage(content, enterprise);
+  return <div className="reddit-shell" lang={language === "zh" ? "zh-CN" : "en"}><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>{language === "zh" ? "加入" : "Join"}</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · {language === "zh" ? `由 u/${enterprise.name.replaceAll(" ", "_")} 发布 · 刚刚` : `Posted by u/${enterprise.name.replaceAll(" ", "_")} · just now`}</div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.feedHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> {language === "zh" ? "24 条评论" : "24 Comments"}</span><span><Share2 size={14} /> {language === "zh" ? "分享" : "Share"}</span><span>•••</span></footer></article></div></div>;
 }
 
 function DiscordPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3><p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
+  const language = previewLanguage(content, enterprise);
+  const channel = language === "zh" ? "# 公告" : "# announcements";
+  return <div className="discord-shell" lang={language === "zh" ? "zh-CN" : "en"}><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong>{channel}</strong><small>{language === "zh" ? "官方消息、新品发布与社群动态" : "Official news, launches and community updates"}</small></header><div className="discord-thread"><div className="discord-date"><span>{language === "zh" ? "2026年11月4日" : "November 4, 2026"}</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>{language === "zh" ? "应用" : "APP"}</span><small>{language === "zh" ? "今天 9:41" : "Today at 9:41 AM"}</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">{language === "zh" ? `发送消息至 ${channel}` : `Message ${channel}`} <span>☺</span></div></div></div>;
 }
 
-function InstagramPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="instagram-phone"><div className="instagram-head"><strong>Instagram</strong><span>♡　⌁</span></div><div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div><div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}><span>01 / 03</span><div><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong></div></div><div className="instagram-actions"><span><Heart size={22} /><MessageCircle size={21} /><Send size={20} /></span><Bookmark size={21} /></div><div className="instagram-caption"><strong>Liked by community and 1,248 others</strong><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>View all 36 comments · just now</small></div></div>;
+function InstagramPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
+  const [following, setFollowing] = useState(false);
+  const language = previewLanguage(content, enterprise);
+  const isChinese = language === "zh";
+  const location = previewLocation(enterprise, language);
+  return <div className="instagram-phone" lang={isChinese ? "zh-CN" : "en"}>
+    <div className={previewCss.igHead}><strong>Instagram</strong></div>
+    <div className="instagram-profile">
+      <span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span>
+      <div className={previewCss.igProfileName}><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong>{location && <small>{location}</small>}</div>
+      <span className={previewCss.igProfileControls}>
+        <button type="button" className={previewCss.igFollow} aria-pressed={following} onClick={() => setFollowing((value) => !value)}>{following ? (isChinese ? "已关注" : "Following") : (isChinese ? "关注" : "Follow")}</button>
+        <span className={previewCss.igTwoLineMenu} role="img" aria-label={isChinese ? "更多选项" : "More options"}><i /><i /></span>
+      </span>
+    </div>
+    <div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
+      {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} language={language} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
+      <span>01 / 03</span><div className={previewCss.instagramHeroText}>{location && <small>{location}</small>}<strong>{content.title}</strong></div>
+    </div>
+    <div className={previewCss.igActions} aria-label={isChinese ? "模拟互动数据" : "Simulated engagement"}>
+      <div className={previewCss.igMetrics}>
+        <button type="button" className={previewCss.igMetric} onClick={interaction.onLike} aria-label={`${isChinese ? "点赞" : "Like"} ${interaction.likeCount}`} aria-pressed={interaction.liked}><Heart fill={interaction.liked ? "#ed4956" : "none"} color={interaction.liked ? "#ed4956" : "currentColor"} aria-hidden="true" />{formatInstagramCount(interaction.likeCount)}</button>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "评论" : "Comments"} ${interaction.commentCount}`}><MessageCircle aria-hidden="true" />{formatInstagramCount(interaction.commentCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "转发" : "Reposts"} ${interaction.repostCount}`}><Repeat2 aria-hidden="true" />{formatInstagramCount(interaction.repostCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`${isChinese ? "分享" : "Shares"} ${interaction.shareCount}`}><Send aria-hidden="true" />{formatInstagramCount(interaction.shareCount)}</span>
+      </div>
+      <button type="button" className={`${previewCss.igMetric} ${previewCss.igBookmarkMetric}`} onClick={interaction.onCollect} aria-label={`${isChinese ? "收藏" : "Save"} ${interaction.collectCount + Number(interaction.collected)}`} aria-pressed={interaction.collected}><Bookmark fill={interaction.collected ? "currentColor" : "none"} aria-hidden="true" />{formatInstagramCount(interaction.collectCount + Number(interaction.collected))}</button>
+    </div>
+    <div className="instagram-caption"><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>{isChinese ? `查看全部 ${formatInstagramCount(interaction.commentCount)} 条评论 · 刚刚` : `View all ${formatInstagramCount(interaction.commentCount)} comments · just now`}</small></div>
+  </div>;
 }
 
 function TikTokPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="tiktok-phone"><div className="tiktok-top"><span>Following</span><strong>For You</strong></div><div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}><div className="tiktok-scene-copy"><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong><span>▶ 00:15</span></div></div><div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>Share</small></span></div><div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ original sound · {enterprise.name}</span></div><nav><span>⌂<small>Home</small></span><span>⌕<small>Discover</small></span><b>＋</b><span>▣<small>Inbox</small></span><span>♙<small>Profile</small></span></nav></div>;
+  const language = previewLanguage(content, enterprise);
+  const isChinese = language === "zh";
+  const location = previewLocation(enterprise, language);
+  return <div className="tiktok-phone" lang={isChinese ? "zh-CN" : "en"}>
+    <div className="tiktok-top"><span>{isChinese ? "关注" : "Following"}</span><strong>{isChinese ? "推荐" : "For You"}</strong></div>
+    <div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}>
+      {DEMO_HEROES[enterprise.id] && <DemoHero enterprise={enterprise} language={language} creditClassName={previewCss.tiktokHeroCredit} />}
+      <div className="tiktok-scene-copy">{location && <small>{isChinese ? `来自 ${location}` : `FROM ${location.toUpperCase()}`}</small>}<strong>{content.title}</strong><span>▶ 00:15</span></div>
+    </div>
+    <div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>{isChinese ? "分享" : "Share"}</small></span></div>
+    <div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ {isChinese ? "原声" : "original sound"} · {enterprise.name}</span></div>
+    <nav><span>⌂<small>{isChinese ? "首页" : "Home"}</small></span><span>⌕<small>{isChinese ? "发现" : "Discover"}</small></span><b>＋</b><span>▣<small>{isChinese ? "收件箱" : "Inbox"}</small></span><span>♙<small>{isChinese ? "个人主页" : "Profile"}</small></span></nav>
+  </div>;
 }
