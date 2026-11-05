@@ -1,8 +1,10 @@
 "use client";
 
 import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCircle, Music2, Pause, Play, Send, Share2, UserPlus } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import orangeProduct from "./orange-product.webp";
 import styles from "./preview.module.css";
 
 interface PreviewPanelProps {
@@ -183,58 +185,68 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
   burstKey: number;
   onLike: () => void;
 }) {
+  const [collected, setCollected] = useState(false);
+  const isOrange = enterprise.id === "navel-orange";
+  // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
+  const xhsCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
   const slides = [
-    { tag: enterprise.industry, title: enterprise.tagline, background: `linear-gradient(145deg, ${enterprise.accent}, #f3e7cc)` },
-    { tag: "本期主题", title: content.title, background: `linear-gradient(145deg, #2f4a38, ${enterprise.accent})` },
-    { tag: "品牌产地", title: `来自 ${enterprise.location}`, background: `linear-gradient(145deg, ${enterprise.accent}, #294034)` },
+    ...(isOrange ? [{ tag: "产品实拍", title: "", background: "", photo: true }] : []),
+    { tag: enterprise.industry, title: enterprise.tagline, background: `linear-gradient(145deg, ${enterprise.accent}, #f3e7cc)`, photo: false },
+    { tag: "本期主题", title: content.title, background: `linear-gradient(145deg, #2f4a38, ${enterprise.accent})`, photo: false },
+    { tag: "品牌产地", title: `来自 ${enterprise.location}`, background: `linear-gradient(145deg, ${enterprise.accent}, #294034)`, photo: false },
   ];
   return (
-    <div className="phone-frame">
-      <div className="phone-island" />
-      <div className="phone-screen">
-        <div className="phone-top"><span>9:41</span><span>●●● ▰</span></div>
-        <div className="post-top"><span>‹</span><span>{enterprise.name}</span><span>···</span></div>
-        <div className={styles.carousel} onDoubleClick={onLike} title="双击图片试试点赞">
-          <div className={styles.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
+    <div className={xhsCss.xhsPhone}>
+      <div className={xhsCss.xhsScreen}>
+        <div className={xhsCss.xhsStatus}><span>9:41</span><span aria-hidden="true">●●● ▰</span></div>
+        <div className={xhsCss.xhsHeader}>
+          <ChevronLeft size={20} aria-hidden="true" />
+          <span className={xhsCss.xhsAvatar}>{isOrange ? <Image src={orangeProduct} alt="" width={30} height={30} unoptimized /> : enterprise.name.slice(0, 1)}</span>
+          <strong>{enterprise.name}</strong>
+          <span className={xhsCss.xhsFollow}>关注</span>
+          <Share2 size={19} aria-label="分享图标" />
+        </div>
+        <div className={xhsCss.xhsContent}>
+        <div className={xhsCss.carousel} onDoubleClick={onLike} title="双击图片试试点赞">
+          <div className={xhsCss.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
             {slides.map((item, index) => (
-              <div key={`${item.tag}-${index}`} className={styles.carouselSlide} style={{ background: item.background }}>
-                <span className={styles.slideMark}>{item.tag}</span>
-                <strong className={styles.slideTitle}>{item.title}</strong>
+              <div key={`${item.tag}-${index}`} className={xhsCss.carouselSlide} style={{ background: item.background }}>
+                {item.photo ? <Image src={orangeProduct} alt="赣南脐橙产品实拍" fill sizes="300px" className={xhsCss.heroPhoto} unoptimized /> : <><span className={xhsCss.slideMark}>{item.tag}</span><strong className={xhsCss.slideTitle}>{item.title}</strong></>}
               </div>
             ))}
           </div>
-          <span className={styles.slideIndex}>{String(slide + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}</span>
-          {burstKey > 0 && <Heart key={burstKey} size={64} className={styles.burst} color="#ff2442" fill="#ff2442" />}
-          <button type="button" className={`${styles.carouselArrow} ${styles.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + slides.length) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
-          <button type="button" className={`${styles.carouselArrow} ${styles.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
-          <div className={styles.carouselDots}>
-            {slides.map((item, index) => (
-              <button type="button" key={`dot-${item.tag}-${index}`} aria-label={`第 ${index + 1} 张`} className={index === slide ? styles.on : undefined} onClick={(event) => { event.stopPropagation(); onSlideChange(index); }} onDoubleClick={(event) => event.stopPropagation()} />
-            ))}
-          </div>
+          {burstKey > 0 && <Heart key={burstKey} size={64} className={xhsCss.burst} color="#ff2442" fill="#ff2442" />}
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + slides.length) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
         </div>
-        <div className="post-body">
+        <div className={xhsCss.carouselDots}>
+          {slides.map((item, index) => (
+            <button type="button" key={`dot-${item.tag}-${index}`} aria-label={`第 ${index + 1} 张`} aria-current={index === slide ? "true" : undefined} className={index === slide ? xhsCss.on : undefined} onClick={() => onSlideChange(index)} />
+          ))}
+        </div>
+        <div className={xhsCss.xhsBody}>
           <h3>{content.title}</h3>
           <p>{content.body}</p>
-          <div className="hashtags">{content.hashtags.join("  ")}</div>
-          <div className={styles.metricRow}>
-            <button type="button" className={liked ? styles.on : undefined} onClick={onLike}><Heart size={17} color={liked ? "#ff2442" : undefined} fill={liked ? "#ff2442" : "none"} /> {formatCount(likeCount)}</button>
-            <button type="button"><Bookmark size={17} /> {formatCount(collectCount)}</button>
-            <button type="button"><MessageCircle size={17} /> {formatCount(commentCount)}</button>
-            <span className={styles.metricHint}>演示预览</span>
-          </div>
-          <div className="post-author"><span className="avatar">{enterprise.name.slice(0, 1)}</span><span>{enterprise.name}<small>刚刚发布 · 来自 {enterprise.location}</small></span></div>
-          <div className={styles.commentBlock}>
+          <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>
+          <div className={xhsCss.xhsMeta}>刚刚 · 来自 {enterprise.location} · 演示预览</div>
+          <div className={xhsCss.commentBlock}>
+            <strong className={xhsCss.commentHeading}>评论 · {formatCount(commentCount)}</strong>
             {XHS_COMMENTS.map((comment) => (
-              <div className={styles.comment} key={comment.user}>
-                <span className={styles.commentAvatar} style={{ background: comment.tone }}>{comment.user.slice(0, 1)}</span>
-                <div className={styles.commentMain}><div className={styles.commentUser}>{comment.user}</div><div className={styles.commentText}>{comment.text}</div></div>
+              <div className={xhsCss.comment} key={comment.user}>
+                <span className={xhsCss.commentAvatar} style={{ background: comment.tone }}>{comment.user.slice(0, 1)}</span>
+                <div className={xhsCss.commentMain}><div className={xhsCss.commentUser}>{comment.user}</div><div className={xhsCss.commentText}>{comment.text}</div></div>
               </div>
             ))}
-            <div className={styles.commentMore}>展开 {formatCount(commentCount)} 条评论</div>
+            <div className={xhsCss.commentMore}>展开 {formatCount(commentCount)} 条评论</div>
           </div>
         </div>
-        <div className="social-bar"><span>说点什么...</span><Heart size={19} /><Bookmark size={19} /><MessageCircle size={19} /></div>
+        </div>
+        <div className={xhsCss.xhsDock}>
+          <span className={xhsCss.xhsInput}>✎&nbsp; 说点什么</span>
+          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞"><Heart size={18} fill={liked ? "currentColor" : "none"} />{formatCount(likeCount)}</button>
+          <button type="button" className={collected ? xhsCss.xhsSelected : undefined} onClick={() => setCollected((value) => !value)} aria-label="收藏"><Bookmark size={18} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
+          <span className={xhsCss.xhsDockCount}><MessageCircle size={18} />{formatCount(commentCount)}</span>
+        </div>
       </div>
     </div>
   );
