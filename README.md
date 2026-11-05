@@ -35,6 +35,10 @@ npm run dev
 
 浏览器打开 `http://localhost:3000`。没有 API Key 也能体验本地演示流程。如需调用模型，只在自己电脑的 `ai-workbench/.env.local` 填写 `LLM_API_KEY`、`LLM_BASE_URL` 和 `LLM_MODEL`；此文件已被 Git 忽略。更细的启动说明见 [应用说明](ai-workbench/README.md)。
 
+Windows 可直接双击仓库根目录的 `启动AI工作台.cmd`。启动器会检查完整的 Node.js/npm 环境；首次运行或 `package-lock.json` 更新后会自动执行 `npm ci`，等待工作台返回正常页面后才打开浏览器。3000 端口被其他程序占用时会尝试 3001–3010，启动日志写入 `ai-workbench/.next/workbench.stdout.log` 和 `workbench.stderr.log`。若提示缺少 npm，请安装完整的 Node.js LTS，不能只依赖某个工具附带的 `node.exe`。
+
+每次从 GitHub 拉取代码后，运行 `启动AI工作台.cmd --check` 检查本机环境，再双击启动器确认页面可用。更新前先关闭旧工作台服务；启动器会按锁文件自动同步依赖，避免旧版 `node_modules` 与新代码不一致。
+
 ## 每位成员如何更新代码
 
 首次克隆后，从最新的 `main` 建立自己的分支。A 使用 `dev-a`；B、C 分别使用 `dev-b`、`dev-c`，其他协作者也应使用独立分支。
