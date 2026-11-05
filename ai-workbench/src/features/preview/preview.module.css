@@ -56,6 +56,28 @@
 .xhsDock button,.xhsDockCount{display:flex;align-items:center;gap:3px;background:none;border:0;color:#3c3c3c;padding:0;font-size:9px;white-space:nowrap;font-family:inherit}
 .xhsDock button{cursor:pointer}
 .xhsDock .xhsSelected{color:#f13352}
+.xhsDock .xhsCollected{color:#efb72f}
+.xhsDock svg{stroke-linecap:round;stroke-linejoin:round}
+
+/* 评论区使用笔记详情页的平铺列表与缩进回复。 */
+.commentBlock{margin-top:18px;padding:0;background:#fff;border-radius:0;border-top:1px solid #efefef}
+.commentHeading{font-size:10px;color:#555;font-weight:600;padding:12px 0 4px;margin:0}
+.comment{display:flex;gap:9px;padding:12px 0 13px}
+.comment + .comment{margin-top:0;border-top:1px solid #f4f4f4}
+.commentBlock .commentAvatar{width:29px;height:29px;font-size:11px}
+.commentMain{min-width:0;flex:1}
+.commentUser{font-size:10px;color:#969696;font-weight:400;line-height:1.5}
+.commentText{font-size:11px;line-height:1.6;color:#303030;margin-top:5px;overflow-wrap:anywhere}
+.commentMeta{display:flex;align-items:center;gap:13px;color:#a3a3a3;font-size:9px;margin-top:8px}
+.commentMeta span{flex:1;min-width:0}
+.commentMeta b{font-weight:600;color:#777;margin-left:4px}
+.commentMeta svg{color:#777;flex:none}
+.commentPhoto{display:block;width:84px;height:72px;object-fit:cover;border-radius:6px;margin-top:9px}
+.commentBadge{display:inline-block;background:#f5f5f5;color:#a0a0a0;border-radius:11px;font-size:8px;padding:3px 7px;margin-top:8px}
+.commentReply{display:flex;gap:7px;margin-top:14px}
+.commentReply .commentAvatar{width:21px;height:21px;font-size:8px}
+.commentAuthor{color:#f44b70;background:#fff0f3;border-radius:9px;font-size:8px;padding:2px 5px;margin-left:4px}
+.commentMore{margin:2px 0 0 38px;padding:8px 0;border:0;color:#6b8fac;font-size:9px}
 
 /* ── 微博：热门评论 ── */
 .hotComment{margin-top:14px;background:#f7f9f7;border-radius:9px;padding:10px 12px;font-size:9.5px;color:#4c584e;line-height:1.65}

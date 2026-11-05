@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCircle, Music2, Pause, Play, Send, Share2, UserPlus } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCircle, MessageCircleMore, Music2, Pause, Play, Send, Share2, Smile, Star, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
@@ -32,9 +32,26 @@ function formatCount(value: number): string {
   return String(value);
 }
 
-const XHS_COMMENTS = [
-  { user: "山间小铺", tone: "#5a8a63", text: "这个系列一直拍得很有温度，蹲一个新品！" },
-  { user: "柠檬气泡水", tone: "#b98a4d", text: "马住了，周末就带朋友去实地看看。" },
+type XhsDemoComment = {
+  user: string;
+  tone: string;
+  text: string;
+  time: string;
+  location: string;
+  badge?: string;
+  photo?: boolean;
+  reply?: string;
+};
+
+const XHS_COMMENTS: XhsDemoComment[] = [
+  { user: "山间小铺", tone: "#5a8a63", text: "这个系列拍得很有温度，蹲一个新品！", time: "昨天 12:21", location: "浙江", reply: "谢谢你的喜欢，我们会继续认真准备。" },
+  { user: "柠檬气泡水", tone: "#b98a4d", text: "马住了，周末就带朋友去实地看看。", time: "昨天 15:02", location: "上海" },
+];
+
+const XHS_ORANGE_COMMENTS: XhsDemoComment[] = [
+  { user: "高小高果园", tone: "#d5a053", text: "橙子收到了，果肉饱满又多汁，家里人都说好吃🍊", time: "10/21", location: "福建", badge: "购后评价", photo: true, reply: "谢谢支持！今年也会认真把关每一箱。" },
+  { user: "林七", tone: "#e4b95b", text: "今年还是等开园后现摘发货吗？", time: "昨天 11:40", location: "河南", reply: "是的，按预订量采摘，统一现摘发出🍊" },
+  { user: "一个面包", tone: "#a6b2d6", text: "已预约，期待今年这一口甜！", time: "昨天 12:22", location: "北京" },
 ];
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
@@ -187,6 +204,7 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
 }) {
   const [collected, setCollected] = useState(false);
   const isOrange = enterprise.id === "navel-orange";
+  const comments = isOrange ? XHS_ORANGE_COMMENTS : XHS_COMMENTS;
   // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
   const xhsCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
   const slides = [
@@ -229,23 +247,37 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
           <p>{content.body}</p>
           <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>
           <div className={xhsCss.xhsMeta}>刚刚 · 来自 {enterprise.location} · 演示预览</div>
-          <div className={xhsCss.commentBlock}>
-            <strong className={xhsCss.commentHeading}>评论 · {formatCount(commentCount)}</strong>
-            {XHS_COMMENTS.map((comment) => (
+          <section className={xhsCss.commentBlock} aria-label="评论区演示">
+            <div className={xhsCss.commentHeading}>共 {formatCount(commentCount)} 条评论</div>
+            {comments.map((comment) => (
               <div className={xhsCss.comment} key={comment.user}>
                 <span className={xhsCss.commentAvatar} style={{ background: comment.tone }}>{comment.user.slice(0, 1)}</span>
-                <div className={xhsCss.commentMain}><div className={xhsCss.commentUser}>{comment.user}</div><div className={xhsCss.commentText}>{comment.text}</div></div>
+                <div className={xhsCss.commentMain}>
+                  <div className={xhsCss.commentUser}>{comment.user}</div>
+                  <div className={xhsCss.commentText}>{comment.text}</div>
+                  {comment.photo && <Image src={orangeProduct} alt="买家晒出的橙子示意图" width={84} height={72} className={xhsCss.commentPhoto} unoptimized />}
+                  <div className={xhsCss.commentMeta}><span>{comment.time} {comment.location} <b>回复</b></span><Heart size={15} aria-hidden="true" /><Smile size={15} aria-hidden="true" /></div>
+                  {comment.badge && <span className={xhsCss.commentBadge}>{comment.badge}</span>}
+                  {comment.reply && <div className={xhsCss.commentReply}>
+                    <span className={xhsCss.commentAvatar} style={{ background: enterprise.accent }}>{enterprise.name.slice(0, 1)}</span>
+                    <div className={xhsCss.commentMain}>
+                      <div className={xhsCss.commentUser}>{enterprise.name} <span className={xhsCss.commentAuthor}>作者</span></div>
+                      <div className={xhsCss.commentText}>{comment.reply}</div>
+                      <div className={xhsCss.commentMeta}><span>昨天 15:02 {enterprise.location.split("·").at(-1)?.trim()} <b>回复</b></span><Heart size={15} aria-hidden="true" /><Smile size={15} aria-hidden="true" /></div>
+                    </div>
+                  </div>}
+                </div>
               </div>
             ))}
-            <div className={xhsCss.commentMore}>展开 {formatCount(commentCount)} 条评论</div>
-          </div>
+            <div className={xhsCss.commentMore}>展开更多评论</div>
+          </section>
         </div>
         </div>
         <div className={xhsCss.xhsDock}>
           <span className={xhsCss.xhsInput}>✎&nbsp; 说点什么</span>
           <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞"><Heart size={18} fill={liked ? "currentColor" : "none"} />{formatCount(likeCount)}</button>
-          <button type="button" className={collected ? xhsCss.xhsSelected : undefined} onClick={() => setCollected((value) => !value)} aria-label="收藏"><Bookmark size={18} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
-          <span className={xhsCss.xhsDockCount}><MessageCircle size={18} />{formatCount(commentCount)}</span>
+          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={() => setCollected((value) => !value)} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
+          <span className={xhsCss.xhsDockCount}><MessageCircleMore size={20} strokeWidth={1.9} aria-hidden="true" />{formatCount(commentCount)}</span>
         </div>
       </div>
     </div>
