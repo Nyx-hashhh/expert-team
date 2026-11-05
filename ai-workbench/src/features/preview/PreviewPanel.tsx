@@ -161,7 +161,7 @@ type PreviewInteraction = {
 
 function PlatformPreview({ platform, content, enterprise, interaction }: { platform: Platform; content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
   switch (platform) {
-    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} collected={interaction.collected} burstKey={interaction.burstKey} onLike={interaction.onLike} onCollect={interaction.onCollect} />;
+    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} collected={interaction.collected} likeCount={interaction.likeCount} collectCount={interaction.collectCount} burstKey={interaction.burstKey} onLike={interaction.onLike} onCollect={interaction.onCollect} />;
     case "weibo": return <WeiboPreview content={content} enterprise={enterprise} repostCount={interaction.repostCount} commentCount={interaction.commentCount} likeCount={interaction.likeCount} />;
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
@@ -171,13 +171,15 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
   }
 }
 
-function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, collected, burstKey, onLike, onCollect }: {
+function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, collected, likeCount, collectCount, burstKey, onLike, onCollect }: {
   content: ContentVersion;
   enterprise: Enterprise;
   slide: number;
   onSlideChange: (slide: number) => void;
   liked: boolean;
   collected: boolean;
+  likeCount: number;
+  collectCount: number;
   burstKey: number;
   onLike: () => void;
   onCollect: () => void;
@@ -219,7 +221,7 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
           <h3>{content.title || "标题将在这里显示"}</h3>
           <p>{content.body || "正文将在这里显示"}</p>
           {content.hashtags.length > 0 && <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>}
-          <div className={xhsCss.xhsMeta}>刚刚{enterprise.location ? ` · 来自 ${enterprise.location}` : ""} · 预览</div>
+          <div className={xhsCss.xhsMeta}>刚刚{enterprise.location ? ` · 来自 ${enterprise.location}` : ""} · 互动数据为模拟</div>
           <section className={xhsCss.commentBlock} aria-label="评论区预留位置">
             <div className={xhsCss.commentHeading}>评论</div>
             <div className={xhsCss.commentEmpty}>
@@ -231,8 +233,8 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
         </div>
         <div className={xhsCss.xhsDock}>
           <span className={xhsCss.xhsInput}>✎&nbsp; 说点什么</span>
-          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞" aria-pressed={liked}><Heart size={18} fill={liked ? "currentColor" : "none"} />{Number(liked)}</button>
-          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={onCollect} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{Number(collected)}</button>
+          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞" aria-pressed={liked}><Heart size={18} fill={liked ? "currentColor" : "none"} />{formatCount(likeCount)}</button>
+          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={onCollect} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
           <span className={xhsCss.xhsDockCount}><MessageCircleMore size={20} strokeWidth={1.9} aria-hidden="true" />0</span>
         </div>
       </div>
