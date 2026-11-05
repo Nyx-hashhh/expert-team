@@ -34,11 +34,19 @@ function formatCount(value: number): string {
   return String(value);
 }
 
-const XHS_DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
+const DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
   "spring-tea": { image: springTeaHero, alt: "春茶茶汤与鲜叶场景示意图" },
   "heritage-town": { image: heritageTownHero, alt: "古镇陶艺体验场景示意图" },
   "navel-orange": { image: navelOrangeHero, alt: "新鲜脐橙产品场景示意图" },
 };
+
+const previewCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
+
+function DemoHero({ enterprise, creditClassName = "" }: { enterprise: Enterprise; creditClassName?: string }) {
+  const hero = DEMO_HEROES[enterprise.id];
+  if (!hero) return null;
+  return <><Image src={hero.image} alt={hero.alt} fill sizes="300px" loading="eager" className={previewCss.demoHeroImage} unoptimized /><small className={`${previewCss.demoHeroCredit} ${creditClassName}`}>AI 示意图</small></>;
+}
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
@@ -195,9 +203,9 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
   onCollect: () => void;
 }) {
   // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
-  const xhsCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
+  const xhsCss = previewCss;
   const imageSlots = [1, 2, 3];
-  const hero = XHS_DEMO_HEROES[enterprise.id];
+  const hero = DEMO_HEROES[enterprise.id];
   return (
     <div className={xhsCss.xhsPhone}>
       <div className={xhsCss.xhsScreen}>
@@ -264,8 +272,8 @@ function WeiboPreview({ content, enterprise, repostCount, commentCount, likeCoun
       <div className="weibo-profile"><span className="avatar">{enterprise.name.slice(0, 1)}</span><div><strong>{enterprise.name} <span className="verified">V</span></strong><small>刚刚 · 来自微博网页版</small></div><span>···</span></div>
       <p>{content.body}</p>
       <div className="weibo-tags">{content.hashtags.join("  ")}</div>
-      <div className="weibo-grid">{["品牌故事", enterprise.industry, "好物分享", "匠心细节"].map((label, index) => <div key={label} style={{ backgroundColor: `${enterprise.accent}${index % 2 ? "55" : "88"}` }}>{label}</div>)}</div>
-      <div className={styles.hotComment}><b>@薄荷绿茶</b>：支持本土小品牌，这条文案是真的走心，已经转发给闺蜜了 <span>· {formatCount(Math.max(12, Math.round(likeCount / 6)))} 人赞</span></div>
+      <div className="weibo-grid">{["品牌故事", enterprise.industry, "好物分享", "匠心细节"].map((label, index) => <div key={label} className={index === 0 ? previewCss.weiboHeroTile : undefined} style={{ backgroundColor: `${enterprise.accent}${index % 2 ? "55" : "88"}` }}>{index === 0 && DEMO_HEROES[enterprise.id] ? <DemoHero enterprise={enterprise} /> : label}</div>)}</div>
+      <div className={previewCss.hotComment}><b>@薄荷绿茶</b>：支持本土小品牌，这条文案是真的走心，已经转发给闺蜜了 <span>· {formatCount(Math.max(12, Math.round(likeCount / 6)))} 人赞</span></div>
       <div className="weibo-footer">
         <span><Share2 size={16} /> 转发 {formatCount(repostCount)}</span>
         <span><MessageCircle size={16} /> 评论 {formatCount(commentCount)}</span>
@@ -291,34 +299,35 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
   const shots = content.storyboard ?? [];
   return (
     <div className="script-card">
-      <div className={styles.dyPlayer}>
-        <div className={styles.dyProgress}>{shots.map((shot, index) => <i key={shot.timeRange} className={index <= activeShot ? styles.on : undefined} />)}</div>
-        <div className={styles.dyCenter}>
-          <button type="button" className={styles.dyPlay} onClick={onTogglePlay} aria-label={playing ? "暂停分镜演示" : "播放分镜演示"}>{playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 3 }} />}</button>
-          <div className={styles.dyTitle}>{content.title}</div>
-          <div className={styles.dySub}>15 秒竖屏短视频 · 黄金前 3 秒钩子</div>
+      <div className={previewCss.dyPlayer}>
+        {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.videoHeroCredit} /><div className={previewCss.videoHeroShade} /></>}
+        <div className={previewCss.dyProgress}>{shots.map((shot, index) => <i key={shot.timeRange} className={index <= activeShot ? previewCss.on : undefined} />)}</div>
+        <div className={previewCss.dyCenter}>
+          <button type="button" className={previewCss.dyPlay} onClick={onTogglePlay} aria-label={playing ? "暂停分镜演示" : "播放分镜演示"}>{playing ? <Pause size={20} /> : <Play size={20} style={{ marginLeft: 3 }} />}</button>
+          <div className={previewCss.dyTitle}>{content.title}</div>
+          <div className={previewCss.dySub}>15 秒竖屏短视频 · 黄金前 3 秒钩子</div>
         </div>
-        <div className={styles.dyCaption}><b>@{enterprise.name}</b><small>{content.hashtags.join("  ")}</small></div>
-        <div className={styles.dyRail}>
-          <span className={styles.commentAvatar} style={{ background: enterprise.accent, width: 34, height: 34, fontSize: 13 }}>{enterprise.name.slice(0, 1)}</span>
-          <span className={styles.dyFollow}><UserPlus size={9} /></span>
-          <button type="button" className={styles.dyRailItem} onClick={onLike} aria-label="点赞"><Heart size={25} color={liked ? "#ff2c55" : "#fff"} fill={liked ? "#ff2c55" : "none"} />{formatCount(likeCount)}</button>
-          <span className={styles.dyRailItem}><MessageCircle size={25} />{formatCount(commentCount)}</span>
-          <span className={styles.dyRailItem}><Share2 size={25} />{formatCount(shareCount)}</span>
-          <span className={styles.dyDisc}><Music2 size={13} color="#cfe0d6" /></span>
+        <div className={previewCss.dyCaption}><b>@{enterprise.name}</b><small>{content.hashtags.join("  ")}</small></div>
+        <div className={previewCss.dyRail}>
+          <span className={previewCss.commentAvatar} style={{ background: enterprise.accent, width: 34, height: 34, fontSize: 13 }}>{enterprise.name.slice(0, 1)}</span>
+          <span className={previewCss.dyFollow}><UserPlus size={9} /></span>
+          <button type="button" className={previewCss.dyRailItem} onClick={onLike} aria-label="点赞"><Heart size={25} color={liked ? "#ff2c55" : "#fff"} fill={liked ? "#ff2c55" : "none"} />{formatCount(likeCount)}</button>
+          <span className={previewCss.dyRailItem}><MessageCircle size={25} />{formatCount(commentCount)}</span>
+          <span className={previewCss.dyRailItem}><Share2 size={25} />{formatCount(shareCount)}</span>
+          <span className={previewCss.dyDisc}><Music2 size={13} color="#cfe0d6" /></span>
         </div>
       </div>
       <div className="script-section"><h4>核心口播</h4><p>{content.body}</p></div>
       <div className="script-section">
-        <h4>分镜脚本<span className={styles.demoTag}>{playing ? "自动演示中" : "已暂停"}</span></h4>
-        <div className={styles.shotListV2}>
+        <h4>分镜脚本<span className={previewCss.demoTag}>{playing ? "自动演示中" : "已暂停"}</span></h4>
+        <div className={previewCss.shotListV2}>
           {shots.map((shot, index) => (
-            <button type="button" key={shot.timeRange} className={`${styles.shotItem} ${index === activeShot ? styles.shotOn : ""}`} style={index === activeShot ? { borderColor: enterprise.accent } : undefined} onClick={() => onShotChange(index)}>
-              <span className={styles.shotTime}>{shot.timeRange}</span>
-              <span className={styles.shotMain}>
+            <button type="button" key={shot.timeRange} className={`${previewCss.shotItem} ${index === activeShot ? previewCss.shotOn : ""}`} style={index === activeShot ? { borderColor: enterprise.accent } : undefined} onClick={() => onShotChange(index)}>
+              <span className={previewCss.shotTime}>{shot.timeRange}</span>
+              <span className={previewCss.shotMain}>
                 <strong>{shot.shot}</strong>
-                <span className={styles.shotText}>🎙 {shot.voiceover}</span>
-                <small className={styles.shotBgm}>♫ {shot.bgm}</small>
+                <span className={previewCss.shotText}>🎙 {shot.voiceover}</span>
+                <small className={previewCss.shotBgm}>♫ {shot.bgm}</small>
               </span>
             </button>
           ))}
@@ -330,17 +339,35 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
 }
 
 function RedditPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="reddit-shell"><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>Join</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · Posted by u/{enterprise.name.replaceAll(" ", "_")} · just now</div><h3>{content.title}</h3><p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> 24 Comments</span><span><Share2 size={14} /> Share</span><span>•••</span></footer></article></div></div>;
+  return <div className="reddit-shell"><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>Join</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · Posted by u/{enterprise.name.replaceAll(" ", "_")} · just now</div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.feedHero}><DemoHero enterprise={enterprise} /></div>}<p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> 24 Comments</span><span><Share2 size={14} /> Share</span><span>•••</span></footer></article></div></div>;
 }
 
 function DiscordPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3><p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
+  return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
 }
 
 function InstagramPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="instagram-phone"><div className="instagram-head"><strong>Instagram</strong><span>♡　⌁</span></div><div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div><div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}><span>01 / 03</span><div><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong></div></div><div className="instagram-actions"><span><Heart size={22} /><MessageCircle size={21} /><Send size={20} /></span><Bookmark size={21} /></div><div className="instagram-caption"><strong>Liked by community and 1,248 others</strong><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>View all 36 comments · just now</small></div></div>;
+  return <div className="instagram-phone">
+    <div className="instagram-head"><strong>Instagram</strong><span>♡　⌁</span></div>
+    <div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div>
+    <div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
+      {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
+      <span>01 / 03</span><div className={previewCss.instagramHeroText}><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong></div>
+    </div>
+    <div className="instagram-actions"><span><Heart size={22} /><MessageCircle size={21} /><Send size={20} /></span><Bookmark size={21} /></div>
+    <div className="instagram-caption"><strong>Liked by community and 1,248 others</strong><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>View all 36 comments · just now</small></div>
+  </div>;
 }
 
 function TikTokPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  return <div className="tiktok-phone"><div className="tiktok-top"><span>Following</span><strong>For You</strong></div><div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}><div className="tiktok-scene-copy"><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong><span>▶ 00:15</span></div></div><div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>Share</small></span></div><div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ original sound · {enterprise.name}</span></div><nav><span>⌂<small>Home</small></span><span>⌕<small>Discover</small></span><b>＋</b><span>▣<small>Inbox</small></span><span>♙<small>Profile</small></span></nav></div>;
+  return <div className="tiktok-phone">
+    <div className="tiktok-top"><span>Following</span><strong>For You</strong></div>
+    <div className="tiktok-scene" style={{ background: `linear-gradient(165deg, #111 8%, ${enterprise.accent} 54%, #c5a477)` }}>
+      {DEMO_HEROES[enterprise.id] && <DemoHero enterprise={enterprise} creditClassName={previewCss.tiktokHeroCredit} />}
+      <div className="tiktok-scene-copy"><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong><span>▶ 00:15</span></div>
+    </div>
+    <div className="tiktok-rail"><span className="tiktok-avatar">{enterprise.name.slice(0, 1)}<i>+</i></span><span>♥<small>12.8K</small></span><span>●<small>328</small></span><span>↗<small>Share</small></span></div>
+    <div className="tiktok-caption"><strong>@{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><p>{content.body}</p><div>{content.hashtags.join(" ")}</div><span>♫ original sound · {enterprise.name}</span></div>
+    <nav><span>⌂<small>Home</small></span><span>⌕<small>Discover</small></span><b>＋</b><span>▣<small>Inbox</small></span><span>♙<small>Profile</small></span></nav>
+  </div>;
 }
