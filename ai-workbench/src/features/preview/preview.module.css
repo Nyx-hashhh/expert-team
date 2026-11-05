@@ -26,6 +26,15 @@
 /* Instagram 顶栏与互动区：标题居中，图标与数量紧凑成组。 */
 .igHead{height:47px;display:flex;align-items:center;justify-content:center;padding:0 12px}
 .igHead strong{font-family:inherit;font-size:17px;font-style:normal;font-weight:700;line-height:1}
+.igProfileName{min-width:0}
+.igProfileName strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.igProfileControls{display:flex;align-items:center;gap:8px;flex:none}
+.igFollow{min-width:43px;height:25px;padding:0 7px;border:1px solid #262626;border-radius:7px;background:#fff;color:#171717;font-family:inherit;font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap}
+.igFollow[aria-pressed="true"]{border-color:#ddd;background:#f4f4f4;color:#555}
+.igTwoLineMenu{width:20px;height:25px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:5px;flex:none}
+.igTwoLineMenu i{height:2px;border-radius:2px;background:#222}
+.igTwoLineMenu i:first-child{width:19px}
+.igTwoLineMenu i:last-child{width:12px}
 .igActions{display:flex;align-items:center;gap:6px;padding:9px 10px 3px;color:#171717}
 .igMetrics{display:flex;align-items:center;gap:6px;min-width:0}
 .igMetric{display:inline-flex;align-items:center;gap:2px;flex:none;padding:0;border:0;background:none;color:inherit;font-family:inherit;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}

@@ -202,7 +202,7 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
     case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
-    case "instagram": return <InstagramPreview content={content} enterprise={enterprise} interaction={interaction} />;
+    case "instagram": return <InstagramPreview key={enterprise.id} content={content} enterprise={enterprise} interaction={interaction} />;
     case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
   }
 }
@@ -365,10 +365,18 @@ function DiscordPreview({ content, enterprise }: { content: ContentVersion; ente
 }
 
 function InstagramPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
+  const [following, setFollowing] = useState(false);
   const isChinese = /[\u3400-\u9fff]/.test(content.title);
   return <div className="instagram-phone">
     <div className={previewCss.igHead}><strong>Instagram</strong></div>
-    <div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div>
+    <div className="instagram-profile">
+      <span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span>
+      <div className={previewCss.igProfileName}><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div>
+      <span className={previewCss.igProfileControls}>
+        <button type="button" className={previewCss.igFollow} aria-pressed={following} onClick={() => setFollowing((value) => !value)}>{following ? (isChinese ? "已关注" : "Following") : (isChinese ? "关注" : "Follow")}</button>
+        <span className={previewCss.igTwoLineMenu} role="img" aria-label="更多选项"><i /><i /></span>
+      </span>
+    </div>
     <div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
       {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
       <span>01 / 03</span><div className={previewCss.instagramHeroText}><small>{enterprise.location}</small><strong>{content.title}</strong></div>
