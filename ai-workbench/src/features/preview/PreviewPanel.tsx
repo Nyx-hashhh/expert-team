@@ -1,11 +1,8 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCircle, MessageCircleMore, Music2, Pause, Play, Send, Share2, Smile, Star, UserPlus } from "lucide-react";
-import Image from "next/image";
+import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
-import commentAvatars from "./comment-avatars.png";
-import orangeProduct from "./orange-product.webp";
 import styles from "./preview.module.css";
 
 interface PreviewPanelProps {
@@ -33,36 +30,13 @@ function formatCount(value: number): string {
   return String(value);
 }
 
-type XhsDemoComment = {
-  user: string;
-  avatar: 0 | 1 | 2 | 3;
-  text: string;
-  time: string;
-  location: string;
-  badge?: string;
-  photo?: boolean;
-  reply?: string;
-};
-
-const XHS_COMMENTS: XhsDemoComment[] = [
-  { user: "山间小铺", avatar: 0, text: "这个系列拍得很有温度，蹲一个新品！", time: "昨天 12:21", location: "浙江", reply: "谢谢你的喜欢，我们会继续认真准备。" },
-  { user: "柠檬气泡水", avatar: 1, text: "马住了，周末就带朋友去实地看看。", time: "昨天 15:02", location: "上海" },
-];
-
-const XHS_ORANGE_COMMENTS: XhsDemoComment[] = [
-  { user: "高小高果园", avatar: 3, text: "橙子收到了，果肉饱满又多汁，家里人都说好吃🍊", time: "10/21", location: "福建", badge: "购后评价", photo: true, reply: "谢谢支持！今年也会认真把关每一箱。" },
-  { user: "林七", avatar: 1, text: "今年还是等开园后现摘发货吗？", time: "昨天 11:40", location: "河南", reply: "是的，按预订量采摘，统一现摘发出🍊" },
-  { user: "一个面包", avatar: 2, text: "已预约，期待今年这一口甜！", time: "昨天 12:22", location: "北京" },
-];
-
-const XHS_AVATAR_POSITIONS = ["0% 0%", "100% 0%", "0% 100%", "100% 100%"] as const;
-
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
   const [liked, setLiked] = useState(false);
+  const [collected, setCollected] = useState(false);
   const [extraLikes, setExtraLikes] = useState(0);
   const [burstKey, setBurstKey] = useState(0);
   const [activeShot, setActiveShot] = useState(0);
@@ -90,7 +64,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     };
   }, [enterprise.id, activePlatform, activeVersion]);
 
-  useEffect(() => { setSlide(0); setLiked(false); setExtraLikes(0); setActiveShot(0); setPlaying(true); }, [content]);
+  useEffect(() => { setSlide(0); setLiked(false); setCollected(false); setExtraLikes(0); setBurstKey(0); setActiveShot(0); setPlaying(true); }, [content]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => {
     if (shots.length <= 1 || !playing) return;
@@ -108,6 +82,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     slide,
     onSlideChange: setSlide,
     liked,
+    collected,
     likeCount: metrics.likes + extraLikes,
     collectCount: metrics.collects,
     commentCount: metrics.comments,
@@ -117,6 +92,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     activeShot,
     playing,
     onLike: toggleLike,
+    onCollect: () => setCollected((value) => !value),
     onShotChange: setActiveShot,
     onTogglePlay: () => setPlaying((value) => !value),
   };
@@ -168,6 +144,7 @@ type PreviewInteraction = {
   slide: number;
   onSlideChange: (slide: number) => void;
   liked: boolean;
+  collected: boolean;
   likeCount: number;
   collectCount: number;
   commentCount: number;
@@ -177,13 +154,14 @@ type PreviewInteraction = {
   activeShot: number;
   playing: boolean;
   onLike: () => void;
+  onCollect: () => void;
   onShotChange: (index: number) => void;
   onTogglePlay: () => void;
 };
 
 function PlatformPreview({ platform, content, enterprise, interaction }: { platform: Platform; content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
   switch (platform) {
-    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} likeCount={interaction.likeCount} collectCount={interaction.collectCount} commentCount={interaction.commentCount} burstKey={interaction.burstKey} onLike={interaction.onLike} />;
+    case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} collected={interaction.collected} burstKey={interaction.burstKey} onLike={interaction.onLike} onCollect={interaction.onCollect} />;
     case "weibo": return <WeiboPreview content={content} enterprise={enterprise} repostCount={interaction.repostCount} commentCount={interaction.commentCount} likeCount={interaction.likeCount} />;
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
@@ -193,94 +171,69 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
   }
 }
 
-function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, likeCount, collectCount, commentCount, burstKey, onLike }: {
+function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, collected, burstKey, onLike, onCollect }: {
   content: ContentVersion;
   enterprise: Enterprise;
   slide: number;
   onSlideChange: (slide: number) => void;
   liked: boolean;
-  likeCount: number;
-  collectCount: number;
-  commentCount: number;
+  collected: boolean;
   burstKey: number;
   onLike: () => void;
+  onCollect: () => void;
 }) {
-  const [collected, setCollected] = useState(false);
-  const isOrange = enterprise.id === "navel-orange";
-  const comments = isOrange ? XHS_ORANGE_COMMENTS : XHS_COMMENTS;
   // 当前 Turbopack 规则将此文件作为普通 CSS 加载；小红书预览显式回退到全局类名。
   const xhsCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
-  const slides = [
-    ...(isOrange ? [{ tag: "产品实拍", title: "", background: "", photo: true }] : []),
-    { tag: enterprise.industry, title: enterprise.tagline, background: `linear-gradient(145deg, ${enterprise.accent}, #f3e7cc)`, photo: false },
-    { tag: "本期主题", title: content.title, background: `linear-gradient(145deg, #2f4a38, ${enterprise.accent})`, photo: false },
-    { tag: "品牌产地", title: `来自 ${enterprise.location}`, background: `linear-gradient(145deg, ${enterprise.accent}, #294034)`, photo: false },
-  ];
+  const imageSlots = [1, 2, 3];
   return (
     <div className={xhsCss.xhsPhone}>
       <div className={xhsCss.xhsScreen}>
         <div className={xhsCss.xhsStatus}><span>9:41</span><span aria-hidden="true">●●● ▰</span></div>
         <div className={xhsCss.xhsHeader}>
           <ChevronLeft size={20} aria-hidden="true" />
-          <span className={xhsCss.xhsAvatar}>{isOrange ? <Image src={orangeProduct} alt="" width={30} height={30} unoptimized /> : enterprise.name.slice(0, 1)}</span>
+          <span className={xhsCss.xhsAvatar} aria-hidden="true"><UserRound size={17} /></span>
           <strong>{enterprise.name}</strong>
           <span className={xhsCss.xhsFollow}>关注</span>
           <Share2 size={19} aria-label="分享图标" />
         </div>
         <div className={xhsCss.xhsContent}>
-        <div className={xhsCss.carousel} onDoubleClick={onLike} title="双击图片试试点赞">
+        <div className={xhsCss.carousel} onDoubleClick={onLike} title="双击图片区域试试点赞">
           <div className={xhsCss.carouselTrack} style={{ transform: `translateX(-${slide * 100}%)` }}>
-            {slides.map((item, index) => (
-              <div key={`${item.tag}-${index}`} className={xhsCss.carouselSlide} style={{ background: item.background }}>
-                {item.photo ? <Image src={orangeProduct} alt="赣南脐橙产品实拍" fill sizes="300px" className={xhsCss.heroPhoto} unoptimized /> : <><span className={xhsCss.slideMark}>{item.tag}</span><strong className={xhsCss.slideTitle}>{item.title}</strong></>}
+            {imageSlots.map((slot) => (
+              <div key={slot} className={`${xhsCss.carouselSlide} ${xhsCss.imagePlaceholder}`} aria-label={`图片位置 ${slot}`}>
+                <ImageIcon size={30} strokeWidth={1.4} aria-hidden="true" />
+                <span>图片位置 {slot}</span>
               </div>
             ))}
           </div>
           {burstKey > 0 && <Heart key={burstKey} size={64} className={xhsCss.burst} color="#ff2442" fill="#ff2442" />}
-          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + slides.length) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
-          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % slides.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.l}`} aria-label="上一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide - 1 + imageSlots.length) % imageSlots.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronLeft size={13} /></button>
+          <button type="button" className={`${xhsCss.carouselArrow} ${xhsCss.r}`} aria-label="下一张" onClick={(event) => { event.stopPropagation(); onSlideChange((slide + 1) % imageSlots.length); }} onDoubleClick={(event) => event.stopPropagation()}><ChevronRight size={13} /></button>
         </div>
         <div className={xhsCss.carouselDots}>
-          {slides.map((item, index) => (
-            <button type="button" key={`dot-${item.tag}-${index}`} aria-label={`第 ${index + 1} 张`} aria-current={index === slide ? "true" : undefined} className={index === slide ? xhsCss.on : undefined} onClick={() => onSlideChange(index)} />
+          {imageSlots.map((slot, index) => (
+            <button type="button" key={slot} aria-label={`第 ${slot} 张`} aria-current={index === slide ? "true" : undefined} className={index === slide ? xhsCss.on : undefined} onClick={() => onSlideChange(index)} />
           ))}
         </div>
         <div className={xhsCss.xhsBody}>
-          <h3>{content.title}</h3>
-          <p>{content.body}</p>
-          <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>
-          <div className={xhsCss.xhsMeta}>刚刚 · 来自 {enterprise.location} · 演示预览</div>
-          <section className={xhsCss.commentBlock} aria-label="评论区演示">
-            <div className={xhsCss.commentHeading}>共 {formatCount(commentCount)} 条评论</div>
-            {comments.map((comment) => (
-              <div className={xhsCss.comment} key={comment.user}>
-                <span className={`${xhsCss.commentAvatar} ${xhsCss.avatarPhoto}`} style={{ backgroundImage: `url(${commentAvatars.src})`, backgroundPosition: XHS_AVATAR_POSITIONS[comment.avatar] }} aria-hidden="true" />
-                <div className={xhsCss.commentMain}>
-                  <div className={xhsCss.commentUser}>{comment.user}</div>
-                  <div className={xhsCss.commentText}>{comment.text}</div>
-                  {comment.photo && <Image src={orangeProduct} alt="买家晒出的橙子示意图" width={84} height={72} className={xhsCss.commentPhoto} unoptimized />}
-                  <div className={xhsCss.commentMeta}><span>{comment.time} {comment.location} <b>回复</b></span><Heart size={15} aria-hidden="true" /><Smile size={15} aria-hidden="true" /></div>
-                  {comment.badge && <span className={xhsCss.commentBadge}>{comment.badge}</span>}
-                  {comment.reply && <div className={xhsCss.commentReply}>
-                    <span className={`${xhsCss.commentAvatar} ${xhsCss.avatarPhoto}`} style={isOrange ? { backgroundImage: `url(${orangeProduct.src})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundImage: `url(${commentAvatars.src})`, backgroundPosition: XHS_AVATAR_POSITIONS[0] }} aria-hidden="true" />
-                    <div className={xhsCss.commentMain}>
-                      <div className={xhsCss.commentUser}>{enterprise.name} <span className={xhsCss.commentAuthor}>作者</span></div>
-                      <div className={xhsCss.commentText}>{comment.reply}</div>
-                      <div className={xhsCss.commentMeta}><span>昨天 15:02 {enterprise.location.split("·").at(-1)?.trim()} <b>回复</b></span><Heart size={15} aria-hidden="true" /><Smile size={15} aria-hidden="true" /></div>
-                    </div>
-                  </div>}
-                </div>
-              </div>
-            ))}
-            <div className={xhsCss.commentMore}>展开更多评论</div>
+          <h3>{content.title || "标题将在这里显示"}</h3>
+          <p>{content.body || "正文将在这里显示"}</p>
+          {content.hashtags.length > 0 && <div className={xhsCss.xhsHashtags}>{content.hashtags.join("  ")}</div>}
+          <div className={xhsCss.xhsMeta}>刚刚{enterprise.location ? ` · 来自 ${enterprise.location}` : ""} · 预览</div>
+          <section className={xhsCss.commentBlock} aria-label="评论区预留位置">
+            <div className={xhsCss.commentHeading}>评论</div>
+            <div className={xhsCss.commentEmpty}>
+              <span className={xhsCss.commentAvatar} aria-hidden="true"><UserRound size={16} /></span>
+              <span>发布后，评论将在这里显示</span>
+            </div>
           </section>
         </div>
         </div>
         <div className={xhsCss.xhsDock}>
           <span className={xhsCss.xhsInput}>✎&nbsp; 说点什么</span>
-          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞"><Heart size={18} fill={liked ? "currentColor" : "none"} />{formatCount(likeCount)}</button>
-          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={() => setCollected((value) => !value)} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{formatCount(collectCount + Number(collected))}</button>
-          <span className={xhsCss.xhsDockCount}><MessageCircleMore size={20} strokeWidth={1.9} aria-hidden="true" />{formatCount(commentCount)}</span>
+          <button type="button" className={liked ? xhsCss.xhsSelected : undefined} onClick={onLike} aria-label="点赞" aria-pressed={liked}><Heart size={18} fill={liked ? "currentColor" : "none"} />{Number(liked)}</button>
+          <button type="button" className={collected ? xhsCss.xhsCollected : undefined} onClick={onCollect} aria-label={collected ? "取消收藏" : "收藏"} aria-pressed={collected}><Star size={20} strokeWidth={1.9} fill={collected ? "currentColor" : "none"} />{Number(collected)}</button>
+          <span className={xhsCss.xhsDockCount}><MessageCircleMore size={20} strokeWidth={1.9} aria-hidden="true" />0</span>
         </div>
       </div>
     </div>

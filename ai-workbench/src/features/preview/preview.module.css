@@ -4,10 +4,8 @@
 .carousel{position:relative;height:238px;overflow:hidden;cursor:pointer;user-select:none}
 .carouselTrack{display:flex;height:100%;transition:transform .45s cubic-bezier(.22,.61,.36,1)}
 .carouselSlide{flex:0 0 100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;color:#fff;position:relative}
-.heroPhoto{object-fit:cover;object-position:center;padding:0}
-.slideMark{font-size:12px;letter-spacing:4px;border:1px solid #ffffffaa;padding:7px 11px;margin-bottom:12px}
-.slideIndex{position:absolute;right:10px;bottom:10px;background:#0004;padding:2px 6px;border-radius:8px;font-size:8px}
-.slideTitle{font-family:Georgia,serif;font-size:17px;line-height:1.5;text-shadow:0 2px 10px #0003}
+.imagePlaceholder{gap:9px;background:#f3f4f2;color:#9da59f;font-size:10px;letter-spacing:.4px}
+.imagePlaceholder svg{color:#aeb8b0}
 .carouselDots{display:flex;justify-content:center;align-items:center;gap:6px;min-height:25px;background:#fff}
 .carouselDots button{width:6px;height:6px;padding:0;border:0;border-radius:50%;background:#c9c9c9;cursor:pointer;transition:background .25s,transform .25s}
 .carouselDots button.on{background:#ff3155;transform:scale(1.15)}
@@ -18,22 +16,6 @@
 /* 双击点赞：爱心迸发动画 */
 .burst{position:absolute;left:50%;top:50%;color:#ff2442;z-index:3;pointer-events:none;animation:burst .8s ease-out forwards;transform:translate(-50%,-50%)}
 @keyframes burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.25)}70%{opacity:1;transform:translate(-50%,-54%) scale(1)}100%{opacity:0;transform:translate(-50%,-62%) scale(.9)}}
-
-/* 互动数据行 */
-.metricRow{display:flex;align-items:center;gap:13px;margin-top:13px;font-size:10px;color:#6a736c}
-.metricRow button{display:flex;align-items:center;gap:4px;border:0;background:none;color:inherit;font-size:10px;cursor:pointer;padding:0;font-family:inherit}
-.metricRow button.on{color:#ff2442}
-.metricHint{margin-left:auto;color:#a8b3a8;font-size:9px}
-
-/* 评论区预览 */
-.commentBlock{margin-top:12px;background:#f8f9f7;border-radius:10px;padding:10px 12px}
-.comment{display:flex;gap:8px}
-.comment + .comment{margin-top:9px}
-.commentAvatar{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:9px;color:#fff;flex:none}
-.commentMain{flex:1;min-width:0}
-.commentUser{font-size:9.5px;font-weight:700;color:#7c887f}
-.commentText{font-size:9.5px;line-height:1.65;color:#49584d;margin-top:2px}
-.commentMore{margin-top:8px;font-size:9px;color:#9aa8a0;border-top:1px dashed #e0e5e0;padding-top:7px}
 
 /* 小红书白天模式：手机详情页的顶部与互动栏固定，正文独立滚动。 */
 .xhsPhone{width:min(100%,302px);height:650px;margin:auto;border:5px solid #29302b;border-radius:34px;background:#fff;box-shadow:0 16px 35px #1e38232b;overflow:hidden}
@@ -46,11 +28,10 @@
 .xhsFollow{color:#f13352;border:1px solid #f13352;border-radius:20px;font-size:10px;padding:4px 11px;line-height:1;white-space:nowrap}
 .xhsContent{min-height:0;flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d8d8d8 transparent}
 .xhsBody{padding:8px 13px 16px}
-.xhsBody h3{font-size:14px;line-height:1.45;margin:0 0 9px;color:#202020;font-weight:750}
+.xhsBody h3{font-size:14px;line-height:1.45;margin:0 0 9px;color:#202020;font-weight:750;overflow-wrap:anywhere}
 .xhsBody p{font-size:11px;line-height:1.75;white-space:pre-line;margin:0;color:#333;overflow-wrap:anywhere}
 .xhsHashtags{font-size:10px;line-height:1.75;color:#3671a4;margin-top:10px;overflow-wrap:anywhere}
 .xhsMeta{font-size:8px;color:#999;margin-top:10px}
-.commentHeading{display:block;color:#444;font-size:10px;margin-bottom:10px}
 .xhsDock{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:5px 9px;border-top:1px solid #ededed;background:#fff}
 .xhsInput{min-width:0;flex:1;background:#f4f4f4;color:#999;border-radius:18px;padding:7px 9px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .xhsDock button,.xhsDockCount{display:flex;align-items:center;gap:3px;background:none;border:0;color:#3c3c3c;padding:0;font-size:9px;white-space:nowrap;font-family:inherit}
@@ -59,26 +40,11 @@
 .xhsDock .xhsCollected{color:#efb72f}
 .xhsDock svg{stroke-linecap:round;stroke-linejoin:round}
 
-/* 评论区使用笔记详情页的平铺列表与缩进回复。 */
+/* 评论区保留布局，等待真实评论数据。 */
 .commentBlock{margin-top:18px;padding:0;background:#fff;border-radius:0;border-top:1px solid #efefef}
 .commentHeading{font-size:10px;color:#555;font-weight:600;padding:12px 0 4px;margin:0}
-.comment{display:flex;gap:9px;padding:12px 0 13px}
-.comment + .comment{margin-top:0;border-top:1px solid #f4f4f4}
-.commentBlock .commentAvatar{width:29px;height:29px;font-size:11px}
-.commentBlock .avatarPhoto{background-size:200% 200%;background-repeat:no-repeat;border:1px solid #f1f1f1}
-.commentMain{min-width:0;flex:1}
-.commentUser{font-size:10px;color:#969696;font-weight:400;line-height:1.5}
-.commentText{font-size:11px;line-height:1.6;color:#303030;margin-top:5px;overflow-wrap:anywhere}
-.commentMeta{display:flex;align-items:center;gap:13px;color:#a3a3a3;font-size:9px;margin-top:8px}
-.commentMeta span{flex:1;min-width:0}
-.commentMeta b{font-weight:600;color:#777;margin-left:4px}
-.commentMeta svg{color:#777;flex:none}
-.commentPhoto{display:block;width:84px;height:72px;object-fit:cover;border-radius:6px;margin-top:9px}
-.commentBadge{display:inline-block;background:#f5f5f5;color:#a0a0a0;border-radius:11px;font-size:8px;padding:3px 7px;margin-top:8px}
-.commentReply{display:flex;gap:7px;margin-top:14px}
-.commentReply .commentAvatar{width:21px;height:21px;font-size:8px}
-.commentAuthor{color:#f44b70;background:#fff0f3;border-radius:9px;font-size:8px;padding:2px 5px;margin-left:4px}
-.commentMore{margin:2px 0 0 38px;padding:8px 0;border:0;color:#6b8fac;font-size:9px}
+.commentEmpty{display:flex;align-items:center;gap:9px;min-height:58px;color:#a3a3a3;font-size:10px}
+.commentAvatar{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;flex:none;background:#f4f4f4;color:#b1b1b1}
 
 /* ── 微博：热门评论 ── */
 .hotComment{margin-top:14px;background:#f7f9f7;border-radius:9px;padding:10px 12px;font-size:9.5px;color:#4c584e;line-height:1.65}
