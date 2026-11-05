@@ -1,43 +1,46 @@
 import type { Enterprise, GenerateRequest, GenerateResult, PlatformVersions } from "@/contracts/content";
+import { buildCreativeBrief } from "@/data/translation";
 
 export function buildFallback(request: GenerateRequest, enterprise: Enterprise): GenerateResult {
   const product = request.selectedMaterials.find((item) => item.type === "product")?.content ?? request.selectedMaterials[0]?.content ?? "品牌坚守真实品质与在地故事。";
   const goal = request.goal.trim() || "把品牌的好故事分享给更多人";
   const brand = enterprise.name;
   const tag = enterprise.industry.replaceAll(" ", "");
+  const brief = request.creativeBrief ?? buildCreativeBrief({ contractVersion: 1, enterpriseId: request.enterpriseId, selectedMaterials: request.selectedMaterials, goal, tone: request.tone, mode: request.translationMode ?? "story" }, enterprise);
+  const brandStory = request.selectedMaterials.find((item) => item.type === "story")?.content ?? enterprise.tagline;
   const xiaohongshu: PlatformVersions = {
     A: {
-      title: `谁懂！把${enterprise.industry}带进日常的快乐`,
-      body: `最近发现了一个想分享给朋友的小众好物 ✨\n\n${brand}来自${enterprise.location}。${product}\n\n这次我们想说：${goal}。比起匆匆划过的广告，更希望你能感受到它背后的认真与温度。\n\n如果你也喜欢有故事的好东西，先收藏，找个周末慢慢了解吧 🤍`,
+      title: brief.hook,
+      body: `${brief.storyAngle}\n\n${brandStory}\n\n真正打动我的，是一个很具体的细节：${product}\n\n${brief.coreMessage}\n\n不急着下结论。你会在什么样的时刻，想起这样的东西？`,
       hashtags: [`#${tag}`, "#宝藏品牌", "#生活里的小确幸", "#送礼灵感"],
     },
     B: {
-      title: `送礼不想撞款？我找到了${brand}`,
-      body: `还在为送什么礼物纠结吗？🎁\n\n我最近被${brand}打动了。它不是流水线式的选择，而是来自${enterprise.location}的一份用心：${product}\n\n${goal}。分享给同样想认真挑礼物的你，实用、有记忆点，也能把故事讲给收礼的人听。\n\n你会把它送给谁？评论区告诉我！`,
+      title: `${brief.audience}会懂的一个小选择`,
+      body: `故事不是从“推荐”开始的。\n\n它从一个很普通的念头开始：想在${enterprise.location}之外，也留住一点这里的味道和生活。于是有了${brand}。\n\n${product}\n\n没有夸张的承诺，只是把该做的细节做好。也许这正是${goal}真正值得被看见的方式。\n\n如果是你，会把它留给自己，还是送给某个人？`,
       hashtags: [`#${tag}`, "#走心礼物", "#本地好物", "#发现好品牌"],
     },
   };
   const weibo: PlatformVersions = {
     A: {
       title: `${brand}上新提案`,
-      body: `来自${enterprise.location}的${brand}，把${enterprise.industry}做出了新意。${product}\n\n这次传播主题：${goal}。欢迎分享你的看法，一起为认真做产品的小品牌打气！`,
+      body: `${brief.hook}\n\n${brandStory}\n\n${product}\n\n${brief.coreMessage}\n\n你愿意为怎样的细节停下来？`,
       hashtags: [`#${tag}#`, "#中小企业好物#", "#地方品牌新发现#"],
     },
     B: {
       title: `把好故事带上热搜`,
-      body: `一件好产品，背后是一群认真生活的人。${brand}从${enterprise.location}出发，用自己的方式讲述${enterprise.industry}。${goal}。转发给那个会喜欢它的朋友！`,
+      body: `先别急着把${brand}叫作“好品牌”。\n\n看看它从哪里来：${enterprise.location}。看看是谁在做：${brandStory}\n\n再看看留下来的细节：${product}\n\n答案交给你。`,
       hashtags: [`#${brand}#`, "#宝藏国货#", "#好物分享#"],
     },
   };
   const douyin: PlatformVersions = {
     A: {
-      title: `3 秒带你认识${brand}`,
-      body: `开场钩子：你以为${enterprise.industry}只能这样？\n核心卖点：${product}\n结尾行动：来认识${brand}。`,
+      title: brief.hook,
+      body: `开场不报品牌名，先让观众看见一个真实场景。\n中段用人物动作带出：${product}\n结尾只留一句克制的问题，不喊口号。`,
       hashtags: [`#${tag}`, "#品牌故事", "#好物推荐"],
       storyboard: [
-        { timeRange: "0–3s", shot: "特写｜产品细节快速切入，字幕抛出反差问题", voiceover: `你以为${enterprise.industry}只能这样？`, bgm: "轻快节拍，首秒入点" },
-        { timeRange: "3–9s", shot: "中景｜产地与制作过程交替展示", voiceover: `${brand}来自${enterprise.location}，每一步都认真。`, bgm: "节奏逐渐明亮" },
-        { timeRange: "9–15s", shot: "近景｜使用场景与品牌收尾", voiceover: `${goal}。现在，就从${brand}开始。`, bgm: "温暖收束" },
+        { timeRange: "0–3s", shot: "特写｜先出现手部动作或生活细节，不露品牌全貌", voiceover: brief.hook, bgm: "环境声先入，第二秒才进轻节拍" },
+        { timeRange: "3–9s", shot: "中景｜人物、产地与产品细节交替，不使用棚拍式轮播", voiceover: brief.storyAngle, bgm: "节奏自然抬升" },
+        { timeRange: "9–15s", shot: "近景｜真实使用瞬间，最后一秒再出现品牌", voiceover: `${brief.coreMessage} 你会为这个细节停下来吗？`, bgm: "留半秒空白后收束" },
       ],
     },
     B: {

@@ -21,6 +21,25 @@ LLM_MODEL=所选模型名
 
 `.env.local` 已被 Git 忽略。请勿把真实密钥写入源码、JSON、文档或提交记录。
 
+## 智能转译 API
+
+`POST /api/translate` 先把客户的原始诉求转换为可执行的创意简报，再由 `POST /api/generate` 生成各平台文案。未配置 `LLM_API_KEY` 时，接口自动使用本地规则引擎；配置兼容 OpenAI 的模型后会优先调用模型，失败时仍自动回退到本地结果。
+
+请求示例：
+
+```json
+{
+  "contractVersion": 1,
+  "enterpriseId": "spring-tea",
+  "selectedMaterials": [],
+  "goal": "新品上市早鸟特惠，主打年轻白领送礼场景",
+  "tone": "温暖叙事",
+  "mode": "story"
+}
+```
+
+`mode` 支持 `story`（故事型）、`seed`（种草型）、`brand`（品牌型）。响应的 `brief` 包含 `audience`、`coreMessage`、`storyAngle`、`hook`、`storyArc`、`humanTouch` 和 `avoid`。前端会把这份简报随生成请求传给 `/api/generate`，避免直接复述客户原话和模板化表达。
+
 ## 三人协作边界
 
 | 负责人 | 目录 | 内容 |

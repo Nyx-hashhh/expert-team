@@ -4,6 +4,11 @@ import enterprisesData from "@/data/enterprises.json";
 import { buildFallback } from "@/data/fallback";
 import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult } from "@/contracts/content";
 
+const creativeBriefSchema = z.object({
+  mode: z.enum(["story", "seed", "brand"]), audience: z.string(), coreMessage: z.string(), storyAngle: z.string(), hook: z.string(),
+  storyArc: z.array(z.string()), humanTouch: z.array(z.string()), avoid: z.array(z.string()),
+});
+
 const requestSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   enterpriseId: z.string(),
@@ -12,6 +17,8 @@ const requestSchema = z.object({
   goal: z.string().trim().min(1).max(2000),
   platforms: z.array(z.enum(PLATFORMS)).min(1),
   tone: z.string().max(80),
+  translationMode: z.enum(["story", "seed", "brand"]).optional(),
+  creativeBrief: creativeBriefSchema.optional(),
 });
 
 const versionSchema = z.object({
@@ -47,8 +54,8 @@ export async function POST(request: Request) {
       model: process.env.LLM_MODEL || "deepseek-chat",
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: "你是中小企业多平台传播策划。只输出合法 JSON 对象。按要求为每个平台生成 A/B 两个不同切入角度的原生平台文案：xiaohongshu、weibo、douyin 使用中文；reddit、discord、instagram、tiktok 使用自然英文并遵循各自社区语气，避免把中文文案直译。把诉求改写为主题融入正文，不要原样复述。每版包含 title、body、hashtags 字符串数组；douyin 与 tiktok 每版另含 storyboard 数组，每项含 timeRange、shot、voiceover、bgm。Reddit 应以讨论和真实交流为主，避免硬广；Discord 应适合社群公告或互动；Instagram 注重视觉叙事与简洁 caption；TikTok 强调开头钩子和短视频节奏。不要捏造产品事实，不要声称话题标签是实时热榜。JSON 顶层键仅使用 xiaohongshu、weibo、douyin、reddit、discord、instagram、tiktok。" },
-        { role: "user", content: JSON.stringify({ enterprise: { name: enterprise.name, industry: enterprise.industry, location: enterprise.location, tagline: enterprise.tagline }, selectedMaterials: selected, goal: input.goal, platforms: input.platforms, tone: input.tone }) },
+        { role: "system", content: "你是中小企业多平台传播策划。只输出合法 JSON 对象。按创意简报为每个平台生成 A/B 两个真正不同切口的原生文案：xiaohongshu、weibo、douyin 使用中文；reddit、discord、instagram、tiktok 使用自然英文并遵循各自社区语气，避免把中文直译。先写人和场景，再自然出现产品；多用可看见的动作、细节、停顿和短句，避免整齐排比、口号、空泛升华与‘赋能、引领、匠心打造、重新定义’等 AI 套话。不要原样复述客户诉求。每版包含 title、body、hashtags 字符串数组；douyin 与 tiktok 每版另含 storyboard 数组，每项含 timeRange、shot、voiceover、bgm。Reddit 以讨论和真实交流为主；Discord 适合社群互动；Instagram 注重视觉叙事；TikTok 强调开头钩子与节奏。不得捏造事实、数据、功效或用户评价。JSON 顶层键仅使用 xiaohongshu、weibo、douyin、reddit、discord、instagram、tiktok。" },
+        { role: "user", content: JSON.stringify({ enterprise: { name: enterprise.name, industry: enterprise.industry, location: enterprise.location, tagline: enterprise.tagline }, selectedMaterials: selected, goal: input.goal, platforms: input.platforms, tone: input.tone, translationMode: input.translationMode, creativeBrief: input.creativeBrief }) },
       ],
     });
     const raw = completion.choices[0]?.message?.content;
