@@ -4,6 +4,7 @@ import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, MessageCirc
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import commentAvatars from "./comment-avatars.png";
 import orangeProduct from "./orange-product.webp";
 import styles from "./preview.module.css";
 
@@ -34,7 +35,7 @@ function formatCount(value: number): string {
 
 type XhsDemoComment = {
   user: string;
-  tone: string;
+  avatar: 0 | 1 | 2 | 3;
   text: string;
   time: string;
   location: string;
@@ -44,15 +45,17 @@ type XhsDemoComment = {
 };
 
 const XHS_COMMENTS: XhsDemoComment[] = [
-  { user: "山间小铺", tone: "#5a8a63", text: "这个系列拍得很有温度，蹲一个新品！", time: "昨天 12:21", location: "浙江", reply: "谢谢你的喜欢，我们会继续认真准备。" },
-  { user: "柠檬气泡水", tone: "#b98a4d", text: "马住了，周末就带朋友去实地看看。", time: "昨天 15:02", location: "上海" },
+  { user: "山间小铺", avatar: 0, text: "这个系列拍得很有温度，蹲一个新品！", time: "昨天 12:21", location: "浙江", reply: "谢谢你的喜欢，我们会继续认真准备。" },
+  { user: "柠檬气泡水", avatar: 1, text: "马住了，周末就带朋友去实地看看。", time: "昨天 15:02", location: "上海" },
 ];
 
 const XHS_ORANGE_COMMENTS: XhsDemoComment[] = [
-  { user: "高小高果园", tone: "#d5a053", text: "橙子收到了，果肉饱满又多汁，家里人都说好吃🍊", time: "10/21", location: "福建", badge: "购后评价", photo: true, reply: "谢谢支持！今年也会认真把关每一箱。" },
-  { user: "林七", tone: "#e4b95b", text: "今年还是等开园后现摘发货吗？", time: "昨天 11:40", location: "河南", reply: "是的，按预订量采摘，统一现摘发出🍊" },
-  { user: "一个面包", tone: "#a6b2d6", text: "已预约，期待今年这一口甜！", time: "昨天 12:22", location: "北京" },
+  { user: "高小高果园", avatar: 3, text: "橙子收到了，果肉饱满又多汁，家里人都说好吃🍊", time: "10/21", location: "福建", badge: "购后评价", photo: true, reply: "谢谢支持！今年也会认真把关每一箱。" },
+  { user: "林七", avatar: 1, text: "今年还是等开园后现摘发货吗？", time: "昨天 11:40", location: "河南", reply: "是的，按预订量采摘，统一现摘发出🍊" },
+  { user: "一个面包", avatar: 2, text: "已预约，期待今年这一口甜！", time: "昨天 12:22", location: "北京" },
 ];
+
+const XHS_AVATAR_POSITIONS = ["0% 0%", "100% 0%", "0% 100%", "100% 100%"] as const;
 
 export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
@@ -251,7 +254,7 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
             <div className={xhsCss.commentHeading}>共 {formatCount(commentCount)} 条评论</div>
             {comments.map((comment) => (
               <div className={xhsCss.comment} key={comment.user}>
-                <span className={xhsCss.commentAvatar} style={{ background: comment.tone }}>{comment.user.slice(0, 1)}</span>
+                <span className={`${xhsCss.commentAvatar} ${xhsCss.avatarPhoto}`} style={{ backgroundImage: `url(${commentAvatars.src})`, backgroundPosition: XHS_AVATAR_POSITIONS[comment.avatar] }} aria-hidden="true" />
                 <div className={xhsCss.commentMain}>
                   <div className={xhsCss.commentUser}>{comment.user}</div>
                   <div className={xhsCss.commentText}>{comment.text}</div>
@@ -259,7 +262,7 @@ function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, 
                   <div className={xhsCss.commentMeta}><span>{comment.time} {comment.location} <b>回复</b></span><Heart size={15} aria-hidden="true" /><Smile size={15} aria-hidden="true" /></div>
                   {comment.badge && <span className={xhsCss.commentBadge}>{comment.badge}</span>}
                   {comment.reply && <div className={xhsCss.commentReply}>
-                    <span className={xhsCss.commentAvatar} style={{ background: enterprise.accent }}>{enterprise.name.slice(0, 1)}</span>
+                    <span className={`${xhsCss.commentAvatar} ${xhsCss.avatarPhoto}`} style={isOrange ? { backgroundImage: `url(${orangeProduct.src})`, backgroundSize: "cover", backgroundPosition: "center" } : { backgroundImage: `url(${commentAvatars.src})`, backgroundPosition: XHS_AVATAR_POSITIONS[0] }} aria-hidden="true" />
                     <div className={xhsCss.commentMain}>
                       <div className={xhsCss.commentUser}>{enterprise.name} <span className={xhsCss.commentAuthor}>作者</span></div>
                       <div className={xhsCss.commentText}>{comment.reply}</div>

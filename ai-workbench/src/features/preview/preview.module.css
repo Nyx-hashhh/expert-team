@@ -65,6 +65,7 @@
 .comment{display:flex;gap:9px;padding:12px 0 13px}
 .comment + .comment{margin-top:0;border-top:1px solid #f4f4f4}
 .commentBlock .commentAvatar{width:29px;height:29px;font-size:11px}
+.commentBlock .avatarPhoto{background-size:200% 200%;background-repeat:no-repeat;border:1px solid #f1f1f1}
 .commentMain{min-width:0;flex:1}
 .commentUser{font-size:10px;color:#969696;font-weight:400;line-height:1.5}
 .commentText{font-size:11px;line-height:1.6;color:#303030;margin-top:5px;overflow-wrap:anywhere}
