@@ -10,8 +10,10 @@ interface PreviewPanelProps {
   result: GenerateResult | null;
   activePlatform: Platform;
   activeVersion: Version;
+  previewWidth: number;
   onPlatformChange: (platform: Platform) => void;
   onVersionChange: (version: Version) => void;
+  onPreviewWidthChange: (width: number) => void;
   onSchedule: () => void;
 }
 
@@ -35,7 +37,7 @@ const XHS_COMMENTS = [
   { user: "柠檬气泡水", tone: "#b98a4d", text: "马住了，周末就带朋友去实地看看。" },
 ];
 
-export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, onPlatformChange, onVersionChange, onSchedule }: PreviewPanelProps) {
+export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, previewWidth, onPlatformChange, onVersionChange, onPreviewWidthChange, onSchedule }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
   const [visibleCount, setVisibleCount] = useState(0);
@@ -68,7 +70,16 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     };
   }, [enterprise.id, activePlatform, activeVersion]);
 
-  useEffect(() => { setSlide(0); setLiked(false); setExtraLikes(0); setActiveShot(0); setPlaying(true); }, [content]);
+  useEffect(() => {
+    const reset = setTimeout(() => {
+      setSlide(0);
+      setLiked(false);
+      setExtraLikes(0);
+      setActiveShot(0);
+      setPlaying(true);
+    }, 0);
+    return () => clearTimeout(reset);
+  }, [content]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => {
     if (shots.length <= 1 || !playing) return;
@@ -117,15 +128,47 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     setNotice("预览长图已导出");
   }
 
+  function startResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (window.innerWidth <= 1020) return;
+    const startX = event.clientX;
+    const startWidth = previewWidth;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add("resizing-preview");
+
+    function resize(moveEvent: PointerEvent) {
+      const maxWidth = Math.min(720, window.innerWidth - 244 - 480);
+      onPreviewWidthChange(Math.min(maxWidth, startWidth + startX - moveEvent.clientX));
+    }
+
+    function stopResize() {
+      document.body.classList.remove("resizing-preview");
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("pointercancel", stopResize);
+    }
+
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("pointercancel", stopResize);
+  }
+
+  function resizeWithKeyboard(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    onPreviewWidthChange(previewWidth + (event.key === "ArrowLeft" ? 24 : -24));
+  }
+
   return (
     <section className="preview-column">
+      <div className="preview-resizer" role="separator" aria-label="调节拟真预览宽度" aria-orientation="vertical" aria-valuemin={320} aria-valuemax={720} aria-valuenow={previewWidth} tabIndex={0} onPointerDown={startResize} onKeyDown={resizeWithKeyboard}><span /><small>拖动调节预览宽度</small></div>
       <div className="preview-header">
         <div><span className="eyebrow">LIVE PREVIEW</span><h2>多端拟真预览</h2></div>
         <span className="live-pill"><span /> 实时同步</span>
       </div>
-      <div className="preview-tabs">
+      <div className="preview-tabs" role="tablist" aria-label="预览平台">
         {PLATFORMS.map((platform) => (
-          <button key={platform} className={activePlatform === platform ? "active" : ""} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
+          <button key={platform} role="tab" aria-selected={activePlatform === platform} className={activePlatform === platform ? "active" : ""} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
         ))}
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
