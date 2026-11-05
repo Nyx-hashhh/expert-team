@@ -5,6 +5,15 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
   const goal = request.goal.trim() || "把品牌的好故事分享给更多人";
   const brand = enterprise.name;
   const tag = enterprise.industry.replaceAll(" ", "");
+  const instagramUsesChinese = /中文|汉语/.test(goal) || (!/英文|英语|\benglish\b/i.test(goal) && /[\u3400-\u9fff]/.test(goal));
+  const instagramGoal = goal
+    .replace(/^(?:请)?(?:用|使用)(?:中文|汉语|英文|英语)(?:写|撰写|输出)?[：:,，。;；\s]*/u, "")
+    .replace(/^(?:please\s+)?(?:write|respond)\s+in\s+(?:english|chinese)[.:,;\s]*/i, "")
+    .replace(/[。.!！?？]+$/u, "")
+    .trim();
+  const englishGoal = /[\u3400-\u9fff]/.test(instagramGoal) ? "" : instagramGoal;
+  const englishFocus = englishGoal.replace(/^(?:promote|showcase|highlight|introduce|feature)\s+/i, "");
+  const englishFocusSentence = englishFocus !== englishGoal ? `Discover ${englishFocus.charAt(0).toLowerCase()}${englishFocus.slice(1)}.` : englishGoal ? `${englishGoal}.` : "";
   const xiaohongshu: PlatformVersions = {
     A: {
       title: `谁懂！把${enterprise.industry}带进日常的快乐`,
@@ -75,15 +84,26 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
       hashtags: ["#community-preview", "#behind-the-scenes", "#feedback"],
     },
   };
-  const instagram: PlatformVersions = {
+  const instagram: PlatformVersions = instagramUsesChinese ? {
     A: {
-      title: `A story worth slowing down for`,
-      body: `Made with care in ${enterprise.location}. ${product}\n\nAt ${brand}, we believe the best things carry a sense of place. Today, we are taking the next step: ${goal}.\n\nSave this post for later and share it with someone who loves discovering thoughtful independent brands.`,
-      hashtags: ["#SmallBusiness", "#MadeWithCare", `#${brand.replaceAll(" ", "")}`, "#DiscoverLocal"],
+      title: `把${enterprise.location}的好味道带回家`,
+      body: `${brand}来自${enterprise.location}。${product}\n\n${instagramGoal}。喜欢当季好物的话，欢迎留言交流。`,
+      hashtags: [`#${tag}`, "#当季好物", "#产地直达"],
     },
     B: {
-      title: `From ${enterprise.location}, with care`,
-      body: `Swipe to meet ${brand} — the people, place and details behind every product.\n\n${product}\n\nOur current mission: ${goal}. Which part of the story would you like to see next? Tell us below.`,
+      title: `从产地到日常，认识${brand}`,
+      body: `想知道一份好产品从哪里来？走进${enterprise.location}，看看${brand}背后的用心。${product}\n\n${instagramGoal}。你最想了解哪个细节？欢迎在评论区告诉我们。`,
+      hashtags: [`#${tag}`, "#产地故事", "#发现好物"],
+    },
+  } : {
+    A: {
+      title: "A closer look at what makes it special",
+      body: `Thoughtful details, a sense of place, and a story worth sharing.${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nWhat would you like to know more about? Tell us below.`,
+      hashtags: ["#SmallBusiness", "#MadeWithCare", "#DiscoverLocal"],
+    },
+    B: {
+      title: "The story behind the details",
+      body: `There is more to this product than meets the eye. Explore the people, place, and care behind it.${englishFocusSentence ? `\n\n${englishFocusSentence}` : ""}\n\nSave this post for later and share your questions in the comments.`,
       hashtags: ["#BrandStory", "#BehindTheScenes", "#IndependentBrand", "#ShopSmall"],
     },
   };

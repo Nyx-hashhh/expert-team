@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
@@ -32,6 +32,10 @@ function formatCount(value: number): string {
   if (value >= 10000) return `${(value / 10000).toFixed(1)}万`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return String(value);
+}
+
+function formatInstagramCount(value: number): string {
+  return value >= 10000 ? `${(value / 1000).toFixed(1)}K` : value.toLocaleString("en-US");
 }
 
 const DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
@@ -198,7 +202,7 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
     case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
-    case "instagram": return <InstagramPreview content={content} enterprise={enterprise} />;
+    case "instagram": return <InstagramPreview content={content} enterprise={enterprise} interaction={interaction} />;
     case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
   }
 }
@@ -360,16 +364,25 @@ function DiscordPreview({ content, enterprise }: { content: ContentVersion; ente
   return <div className="discord-shell"><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong># announcements</strong><small>Official news, launches and community updates</small></header><div className="discord-thread"><div className="discord-date"><span>November 4, 2026</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>APP</span><small>Today at 9:41 AM</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">Message #announcements <span>☺</span></div></div></div>;
 }
 
-function InstagramPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
+function InstagramPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
+  const isChinese = /[\u3400-\u9fff]/.test(content.title);
   return <div className="instagram-phone">
-    <div className="instagram-head"><strong>Instagram</strong><span>♡　⌁</span></div>
+    <div className={previewCss.igHead}><strong>Instagram</strong></div>
     <div className="instagram-profile"><span className="ig-avatar" style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}><i>{enterprise.name.slice(0, 1)}</i></span><div><strong>{enterprise.name.replaceAll(" ", "").toLowerCase()}</strong><small>{enterprise.location}</small></div><span>•••</span></div>
     <div className="instagram-hero" style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
       {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} creditClassName={previewCss.instagramHeroCredit} /><div className={previewCss.instagramHeroShade} /></>}
-      <span>01 / 03</span><div className={previewCss.instagramHeroText}><small>FROM {enterprise.location.toUpperCase()}</small><strong>{content.title}</strong></div>
+      <span>01 / 03</span><div className={previewCss.instagramHeroText}><small>{enterprise.location}</small><strong>{content.title}</strong></div>
     </div>
-    <div className="instagram-actions"><span><Heart size={22} /><MessageCircle size={21} /><Send size={20} /></span><Bookmark size={21} /></div>
-    <div className="instagram-caption"><strong>Liked by community and 1,248 others</strong><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>View all 36 comments · just now</small></div>
+    <div className={previewCss.igActions} aria-label="模拟互动数据">
+      <div className={previewCss.igMetrics}>
+        <button type="button" className={previewCss.igMetric} onClick={interaction.onLike} aria-label={`点赞 ${interaction.likeCount}`} aria-pressed={interaction.liked}><Heart fill={interaction.liked ? "#ed4956" : "none"} color={interaction.liked ? "#ed4956" : "currentColor"} aria-hidden="true" />{formatInstagramCount(interaction.likeCount)}</button>
+        <span className={previewCss.igMetric} aria-label={`评论 ${interaction.commentCount}`}><MessageCircle aria-hidden="true" />{formatInstagramCount(interaction.commentCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`转发 ${interaction.repostCount}`}><Repeat2 aria-hidden="true" />{formatInstagramCount(interaction.repostCount)}</span>
+        <span className={previewCss.igMetric} aria-label={`分享 ${interaction.shareCount}`}><Send aria-hidden="true" />{formatInstagramCount(interaction.shareCount)}</span>
+      </div>
+      <button type="button" className={`${previewCss.igMetric} ${previewCss.igBookmarkMetric}`} onClick={interaction.onCollect} aria-label={`收藏 ${interaction.collectCount + Number(interaction.collected)}`} aria-pressed={interaction.collected}><Bookmark fill={interaction.collected ? "currentColor" : "none"} aria-hidden="true" />{formatInstagramCount(interaction.collectCount + Number(interaction.collected))}</button>
+    </div>
+    <div className="instagram-caption"><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>{isChinese ? `查看全部 ${formatInstagramCount(interaction.commentCount)} 条评论 · 刚刚` : `View all ${formatInstagramCount(interaction.commentCount)} comments · just now`}</small></div>
   </div>;
 }
 

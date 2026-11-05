@@ -23,6 +23,15 @@
 .instagramHeroCredit{bottom:8px;z-index:2}
 .tiktokHeroCredit{top:52px;bottom:auto}
 
+/* Instagram 顶栏与互动区：标题居中，图标与数量紧凑成组。 */
+.igHead{height:47px;display:flex;align-items:center;justify-content:center;padding:0 12px}
+.igHead strong{font-family:inherit;font-size:17px;font-style:normal;font-weight:700;line-height:1}
+.igActions{display:flex;align-items:center;gap:6px;padding:9px 10px 3px;color:#171717}
+.igMetrics{display:flex;align-items:center;gap:6px;min-width:0}
+.igMetric{display:inline-flex;align-items:center;gap:2px;flex:none;padding:0;border:0;background:none;color:inherit;font-family:inherit;font-size:9px;font-weight:600;line-height:1;white-space:nowrap}
+.igMetric svg{width:18px;height:18px;flex:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.igBookmarkMetric{margin-left:auto}
+
 /* ── 小红书：图片轮播 ── */
 .carousel{position:relative;height:238px;overflow:hidden;cursor:pointer;user-select:none}
 .carouselTrack{display:flex;height:100%;transition:transform .45s cubic-bezier(.22,.61,.36,1)}
