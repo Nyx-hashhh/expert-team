@@ -107,7 +107,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 export const PLATFORMS: Platform[] = ["xiaohongshu", "weibo", "douyin", "reddit", "discord", "instagram", "tiktok"];
 
 export const TRANSLATION_MODE_LABELS: Record<TranslationMode, { name: string; description: string }> = {
-  story: { name: "故事型", description: "用场景、人物与转折建立记忆点" },
-  seed: { name: "种草型", description: "从真实痛点和使用体验自然带出卖点" },
-  brand: { name: "品牌型", description: "突出初心、在地感与品牌长期价值" },
+  story: { name: "故事型", description: "用文学化五幕与真实案例呈现卖点" },
+  seed: { name: "种草型", description: "像朋友一样分享真实体验与适用边界" },
+  brand: { name: "品牌型", description: "以专业和可信证据建立品牌心智" },
 };
