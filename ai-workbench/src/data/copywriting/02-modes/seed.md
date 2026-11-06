@@ -77,8 +77,8 @@
 
 ## 九、品类细化
 
-- [农产品](agricultural-products.md)
-- [非遗产品](intangible-heritage-products.md)
-- [美妆](beauty.md)
-- [日用品](daily-necessities.md)
+- [农产品](../03-categories/agricultural-products/seed.md)
+- [非遗产品](../03-categories/intangible-heritage-products/seed.md)
+- [美妆](../03-categories/beauty/seed.md)
+- [日用品](../03-categories/daily-necessities/seed.md)
 
