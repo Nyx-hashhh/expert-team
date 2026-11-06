@@ -11,15 +11,21 @@ npm run dev
 
 打开 http://localhost:3000 。即使没有模型密钥，生成操作也会返回本地演示内容。`npm run build` 可检查项目能否构建。
 
-如需调用商用模型，仅在本机新建 `.env.local` 并填写：
+如需调用第三方商用模型，仅在本机 `.env.local` 中分别填写“智能转译”和“文案生成”两组配置。供应商需提供 OpenAI 兼容接口：
 
 ```text
-LLM_API_KEY=你的密钥
-LLM_BASE_URL=兼容 OpenAI 的服务地址
-LLM_MODEL=所选模型名
+# 智能转译（POST /api/translate）
+TRANSLATE_LLM_API_KEY=你的转译接口密钥
+TRANSLATE_LLM_BASE_URL=供应商的 OpenAI 兼容服务地址
+TRANSLATE_LLM_MODEL=转译使用的模型名
+
+# 文案生成（POST /api/generate）
+GENERATE_LLM_API_KEY=你的生成接口密钥
+GENERATE_LLM_BASE_URL=供应商的 OpenAI 兼容服务地址
+GENERATE_LLM_MODEL=生成使用的模型名
 ```
 
-`.env.local` 已被 Git 忽略。请勿把真实密钥写入源码、JSON、文档或提交记录。
+两组配置可以填写同一家供应商和同一个密钥，也可以分别使用不同供应商或模型。旧版 `LLM_API_KEY`、`LLM_BASE_URL`、`LLM_MODEL` 通用配置仍可作为兼容兜底。`.env.local` 已被 Git 忽略。请勿把真实密钥写入源码、JSON、文档或提交记录。
 
 ## 智能转译 API
 
