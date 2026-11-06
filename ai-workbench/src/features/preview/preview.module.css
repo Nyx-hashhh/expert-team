@@ -161,6 +161,40 @@
 .timeColumns button:hover{background:#eaf4e9}
 .timeColumns .selectedTime,.timeColumns .selectedTime:hover{background:#4b805b;color:#fff;font-weight:700}
 .timeSummary{margin-top:9px;padding-top:9px;border-top:1px solid #edf2ed;color:#5e8667;text-align:center;font-size:10px}
+.zoneField{position:relative;display:grid;gap:6px;margin-top:11px;color:#637c68;font-size:10px;font-weight:700}
+.zoneField>span small{margin-left:5px;color:#9aac9d;font-weight:400}
+.zoneTrigger{display:flex;align-items:center;gap:7px;width:100%;min-height:37px;padding:0 10px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#4b7756;text-align:left;cursor:pointer}
+.zoneTrigger strong{flex:1;font-size:11px}
+.zoneTrigger em{padding:3px 6px;border-radius:10px;background:#e8f3e7;color:#5a8b62;font-size:9px;font-style:normal}
+.zoneTrigger:hover,.zoneTrigger[aria-expanded="true"]{border-color:#8eb99a;background:#fcfefb}
+.zonePopover{position:absolute;right:0;bottom:100%;z-index:30;width:min(320px,calc(100vw - 42px));max-height:min(480px,calc(100vh - 130px));overflow-y:auto;padding:13px;border:1px solid #d8e7da;border-radius:12px;background:#fff;box-shadow:0 16px 38px #284a2d30;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.zonePopoverHead{display:flex;align-items:center;justify-content:space-between;color:#3e6749;font-size:12px}
+.zonePopoverHead small{color:#9bac9e;font-size:9px;font-weight:400}
+.zoneSearch{display:flex;align-items:center;gap:7px;height:32px;margin-top:11px;padding:0 9px;border:1px solid #e0e9e0;border-radius:7px;background:#f8fbf7;color:#8da992}
+.zoneSearch:focus-within{border-color:#8eb99a}
+.zoneSearch input{width:100%;border:0;outline:0;background:transparent;color:#3d6047;font-size:10px}
+.zoneSectionTitle{display:flex;justify-content:space-between;margin:12px 0 5px;color:#819b84;font-size:9px;font-weight:800;letter-spacing:.4px}
+.zoneSectionTitle small{font-size:9px;font-weight:400;letter-spacing:0}
+.zoneList{display:grid;gap:3px}
+.zoneAllList{max-height:162px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.zoneLetter{padding:6px 4px 3px;color:#8cad91;font-size:9px;font-weight:800;letter-spacing:1px}
+.zoneRow{display:flex;align-items:center;gap:3px;min-height:40px;border:1px solid transparent;border-radius:7px;background:#fafcf9}
+.zoneRow:hover{border-color:#dceadc;background:#f6faf5}
+.zoneChoice{display:flex;align-items:center;justify-content:space-between;gap:6px;flex:1;min-width:0;padding:5px 8px;border:0;background:transparent;color:#4b6851;text-align:left;cursor:pointer}
+.zoneChoice span{min-width:0}
+.zoneChoice strong,.zoneChoice small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zoneChoice strong{font-size:10px}
+.zoneChoice small{margin-top:3px;color:#99a89b;font-size:9px;font-weight:400}
+.zoneChoice svg{flex:none;color:#5c9468}
+.zoneChoice[aria-pressed="true"] strong{color:#3f8050}
+.zoneStar,.zoneDefault{flex:none;border:0;background:transparent;cursor:pointer}
+.zoneStar{display:grid;place-items:center;width:26px;height:28px;color:#a9b9aa}
+.zoneStarOn{color:#d5a95e}
+.zoneStar:disabled{cursor:default}
+.zoneDefault{margin-right:5px;padding:4px 6px;border-radius:5px;background:#eaf4e9;color:#5a8b62;font-size:9px}
+.zoneDefault:disabled{background:transparent;color:#7ca785;cursor:default}
+.zoneEmpty{margin:10px 3px;color:#9bac9e;font-size:10px}
+.zoneTrigger:focus-visible,.zonePopover button:focus-visible,.zoneSearch input:focus-visible{outline:2px solid #77a984;outline-offset:2px}
 .schedulePanel .scheduleError{margin:9px 0 0;color:#b25046;font-size:10px}
 .scheduleConfirm{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;margin-top:12px;border:0;border-radius:7px;background:#4b805b;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
 .scheduleConfirm:hover{background:#396c48}

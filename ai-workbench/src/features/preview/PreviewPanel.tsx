@@ -1,9 +1,11 @@
 "use client";
 
-import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
+import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import { readLocal, writeLocal } from "@/lib/storage";
+import { DEFAULT_TIME_ZONE, INITIAL_FAVORITE_TIME_ZONES, RECOMMENDED_TIME_ZONES, SCHEDULE_TIME_ZONES, findScheduleTimeZone, scheduleDateToUtc, type ScheduleTimeZone } from "@/lib/schedule-timezones";
 import springTeaHero from "./hero-spring-tea.png";
 import heritageTownHero from "./hero-heritage-town.png";
 import navelOrangeHero from "./hero-navel-orange.png";
@@ -18,7 +20,7 @@ interface PreviewPanelProps {
   onPlatformChange: (platform: Platform) => void;
   onVersionChange: (version: Version) => void;
   onPreviewWidthChange: (width: number) => void;
-  onSchedule: (scheduledAt: string) => void;
+  onSchedule: (scheduledAt: string, timeZone: string) => void;
 }
 
 function hashCode(input: string): number {
@@ -95,7 +97,11 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const [scheduleTime, setScheduleTime] = useState("");
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
-  const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
+  const [activePicker, setActivePicker] = useState<"date" | "time" | "zone" | null>(null);
+  const [selectedTimeZone, setSelectedTimeZone] = useState(DEFAULT_TIME_ZONE);
+  const [defaultTimeZone, setDefaultTimeZone] = useState(DEFAULT_TIME_ZONE);
+  const [favoriteTimeZones, setFavoriteTimeZones] = useState<string[]>(INITIAL_FAVORITE_TIME_ZONES);
+  const [timeZoneSearch, setTimeZoneSearch] = useState("");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(2000, 0, 1));
   const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
@@ -109,6 +115,10 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const available = Object.keys(result?.platforms ?? {}) as Platform[];
   const content = result?.platforms[activePlatform]?.[activeVersion];
   const shots = content?.storyboard ?? [];
+  const selectedZone = findScheduleTimeZone(selectedTimeZone) ?? SCHEDULE_TIME_ZONES[0];
+  const favoriteZones = favoriteTimeZones.map(findScheduleTimeZone).filter((zone): zone is ScheduleTimeZone => Boolean(zone));
+  const recommendedZones = RECOMMENDED_TIME_ZONES.map(findScheduleTimeZone).filter((zone): zone is ScheduleTimeZone => Boolean(zone)).sort((a, b) => a.countryEn.localeCompare(b.countryEn, "en") || a.cityEn.localeCompare(b.cityEn, "en"));
+  const filteredZones = SCHEDULE_TIME_ZONES.filter((zone) => `${zone.country} ${zone.countryEn} ${zone.city} ${zone.cityEn} ${zone.label} ${zone.id}`.toLowerCase().includes(timeZoneSearch.trim().toLowerCase()));
   const selectedHour = scheduleTime ? scheduleTime.slice(0, 2) : "";
   const selectedMinute = scheduleTime ? scheduleTime.slice(3, 5) : "";
   const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
@@ -161,6 +171,17 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
   useEffect(() => { if (!scheduleSuccess) return; const timer = setTimeout(() => setScheduleSuccess(false), 1600); return () => clearTimeout(timer); }, [scheduleSuccess]);
   useEffect(() => {
+    const timeout = setTimeout(() => {
+      const saved = readLocal<{ defaultTimeZone: string; favorites: string[] }>("schedule-timezone-prefs", { defaultTimeZone: DEFAULT_TIME_ZONE, favorites: INITIAL_FAVORITE_TIME_ZONES });
+      const nextDefault = findScheduleTimeZone(saved.defaultTimeZone) ? saved.defaultTimeZone : DEFAULT_TIME_ZONE;
+      const nextFavorites = Array.isArray(saved.favorites) ? saved.favorites.filter((id) => findScheduleTimeZone(id)) : INITIAL_FAVORITE_TIME_ZONES;
+      setDefaultTimeZone(nextDefault);
+      setSelectedTimeZone(nextDefault);
+      setFavoriteTimeZones([...new Set([nextDefault, ...nextFavorites])]);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, []);
+  useEffect(() => {
     if (shots.length <= 1 || !playing) return;
     const timer = setInterval(() => setActiveShot((index) => (index + 1) % shots.length), 2400);
     return () => clearInterval(timer);
@@ -200,17 +221,18 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
 
   function confirmSchedule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const scheduled = new Date(`${scheduleDate}T${scheduleTime}`);
-    if (!scheduleDate || !scheduleTime || Number.isNaN(scheduled.getTime())) {
+    if (!scheduleDate || !scheduleTime) {
       setScheduleError("请选择发布日期和时间");
       return;
     }
+    const scheduled = scheduleDateToUtc(scheduleDate, scheduleTime, selectedTimeZone);
+    if (!scheduled) { setScheduleError("该时区的此时间不存在，请换一个时间"); return; }
     if (scheduled.getTime() <= Date.now()) {
       setScheduleError("请选择将来的发布日期和时间");
       return;
     }
     try {
-      onSchedule(scheduled.toISOString());
+      onSchedule(scheduled.toISOString(), selectedTimeZone);
       setScheduleOpen(false);
       setActivePicker(null);
       setScheduleSuccess(true);
@@ -218,6 +240,29 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     } catch {
       setScheduleError("保存失败，请重试");
     }
+  }
+
+  function toggleFavoriteTimeZone(id: string) {
+    if (id === defaultTimeZone) return;
+    const next = favoriteTimeZones.includes(id) ? favoriteTimeZones.filter((item) => item !== id) : [...favoriteTimeZones, id];
+    setFavoriteTimeZones(next);
+    writeLocal("schedule-timezone-prefs", { defaultTimeZone, favorites: next });
+  }
+
+  function makeDefaultTimeZone(id: string) {
+    const next = [...new Set([id, ...favoriteTimeZones])];
+    setDefaultTimeZone(id);
+    setSelectedTimeZone(id);
+    setFavoriteTimeZones(next);
+    writeLocal("schedule-timezone-prefs", { defaultTimeZone: id, favorites: next });
+  }
+
+  function timeZoneRow(zone: ScheduleTimeZone) {
+    return <div className={previewCss.zoneRow} key={zone.id}>
+      <button type="button" className={previewCss.zoneChoice} onClick={() => { setSelectedTimeZone(zone.id); setScheduleError(""); }} aria-pressed={selectedTimeZone === zone.id}><span><strong>{zone.label}</strong><small>{zone.country} {zone.countryEn} · {zone.city}</small></span>{selectedTimeZone === zone.id && <Check size={14} />}</button>
+      <button type="button" className={`${previewCss.zoneStar} ${favoriteTimeZones.includes(zone.id) ? previewCss.zoneStarOn : ""}`} onClick={() => toggleFavoriteTimeZone(zone.id)} disabled={zone.id === defaultTimeZone} aria-label={`${zone.id === defaultTimeZone ? "默认常用" : favoriteTimeZones.includes(zone.id) ? "移出常用" : "加入常用"}：${zone.label}`} aria-pressed={favoriteTimeZones.includes(zone.id)} title={zone.id === defaultTimeZone ? "默认时区始终保留在常用" : "添加或移除常用时区"}><Star size={14} fill={favoriteTimeZones.includes(zone.id) ? "currentColor" : "none"} /></button>
+      {selectedTimeZone === zone.id && <button type="button" className={previewCss.zoneDefault} onClick={() => makeDefaultTimeZone(zone.id)} disabled={defaultTimeZone === zone.id}>{defaultTimeZone === zone.id ? "默认" : "设默认"}</button>}
+    </div>;
   }
 
   async function exportImage() {
@@ -348,7 +393,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
         <button onClick={exportImage} disabled={!content || isExporting}><Download size={16} /> {isExporting ? "导出中…" : "导出长图"}</button>
-        <button className="schedule-action" onClick={() => { setScheduleOpen((open) => !open); setActivePicker(null); setScheduleError(""); setScheduleSuccess(false); }} disabled={!content} aria-expanded={scheduleOpen} aria-controls="preview-schedule-form"><Send size={16} /> 推送日历</button>
+        <button className="schedule-action" onClick={() => { if (!scheduleOpen) { setScheduleDate(""); setScheduleTime(""); setSelectedTimeZone(defaultTimeZone); setTimeZoneSearch(""); } setScheduleOpen((open) => !open); setActivePicker(null); setScheduleError(""); setScheduleSuccess(false); }} disabled={!content} aria-expanded={scheduleOpen} aria-controls="preview-schedule-form"><Send size={16} /> 推送日历</button>
       </div>
       {scheduleOpen && content && <form id="preview-schedule-form" className={previewCss.schedulePanel} onSubmit={confirmSchedule}>
         <div className={previewCss.scheduleHeading}><div><CalendarDays size={16} /><strong>选择推送时间</strong></div><button type="button" aria-label="关闭排期设置" onClick={() => setScheduleOpen(false)}><X size={16} /></button></div>
@@ -368,6 +413,16 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
             <button type="button" className={previewCss.pickerTrigger} aria-label="选择推送时间" aria-expanded={activePicker === "time"} onClick={() => setActivePicker(activePicker === "time" ? null : "time")}><Clock3 size={14} />{scheduleTime || "选择时间"}<ChevronDown size={13} /></button>
             {activePicker === "time" && <div className={previewCss.timePopover} role="group" aria-label="推送时间选择"><div className={previewCss.timeCaption}><strong>选择时间</strong><small>24 小时制</small></div><div className={previewCss.timeColumns}><div><span>小时</span>{Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")).map((hour) => <button key={hour} type="button" className={selectedHour === hour ? previewCss.selectedTime : ""} aria-pressed={selectedHour === hour} onClick={() => { setScheduleTime(`${hour}:${selectedMinute || "00"}`); setScheduleError(""); }}>{hour}</button>)}</div><div><span>分钟</span>{Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0")).map((minute) => <button key={minute} type="button" className={selectedMinute === minute ? previewCss.selectedTime : ""} aria-pressed={selectedMinute === minute} onClick={() => { setScheduleTime(`${selectedHour || "00"}:${minute}`); setScheduleError(""); }}>{minute}</button>)}</div></div><div className={previewCss.timeSummary}>已选 {scheduleTime || "--:--"}</div></div>}
           </div>
+        </div>
+        <div className={previewCss.zoneField} onMouseLeave={() => setActivePicker((current) => current === "zone" ? null : current)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActivePicker((current) => current === "zone" ? null : current); }}>
+          <span>发布时区 <small>日期和时间均按所选城市计算</small></span>
+          <button type="button" className={previewCss.zoneTrigger} aria-label="选择发布时区" aria-expanded={activePicker === "zone"} onClick={() => setActivePicker(activePicker === "zone" ? null : "zone")}><Globe2 size={15} /><strong>{selectedZone.country} · {selectedZone.label}</strong>{selectedTimeZone === defaultTimeZone && <em>默认</em>}<ChevronDown size={13} /></button>
+          {activePicker === "zone" && <div className={previewCss.zonePopover} role="group" aria-label="发布时区列表">
+            <div className={previewCss.zonePopoverHead}><strong>选择发布时区</strong><small>按国家英文名 A–Z 排列</small></div>
+            <label className={previewCss.zoneSearch}><Search size={14} /><input value={timeZoneSearch} onChange={(event) => setTimeZoneSearch(event.target.value)} placeholder="搜索国家或城市" aria-label="搜索国家或城市" /></label>
+            {!timeZoneSearch.trim() && <><div className={previewCss.zoneSectionTitle}>我的常用 <small>点击星标可自定义</small></div><div className={previewCss.zoneList}>{favoriteZones.map(timeZoneRow)}</div><div className={previewCss.zoneSectionTitle}>常用推荐</div><div className={previewCss.zoneList}>{recommendedZones.map(timeZoneRow)}</div></>}
+            <div className={previewCss.zoneSectionTitle}>全部时区 · A–Z</div><div className={`${previewCss.zoneList} ${previewCss.zoneAllList}`}>{filteredZones.length ? filteredZones.map((zone, index) => <div key={zone.id}>{(index === 0 || filteredZones[index - 1].countryEn[0] !== zone.countryEn[0]) && <div className={previewCss.zoneLetter}>{zone.countryEn[0]}</div>}{timeZoneRow(zone)}</div>) : <p className={previewCss.zoneEmpty}>没有找到匹配的国家或城市</p>}</div>
+          </div>}
         </div>
         {scheduleError && <p className={previewCss.scheduleError} role="alert">{scheduleError}</p>}
         <button className={previewCss.scheduleConfirm} type="submit"><Check size={15} /> 确认推送</button>

@@ -129,10 +129,10 @@ export function Workbench() {
     setNotice(next.source === "fallback" ? "已加载本地优质演示结果" : "已生成各平台 A/B 创意文案");
   }
 
-  function schedule(scheduledAt: string) {
+  function schedule(scheduledAt: string, timeZone: string) {
     const content = result?.platforms[activePlatform]?.[activeVersion];
     if (!content) return;
-    const item: ScheduleItem = { id: crypto.randomUUID(), enterpriseId, platform: activePlatform, version: activeVersion, content, scheduledAt, status: "draft" };
+    const item: ScheduleItem = { id: crypto.randomUUID(), enterpriseId, platform: activePlatform, version: activeVersion, content, scheduledAt, timeZone, status: "draft" };
     writeLocal("schedule", [item, ...readLocal<ScheduleItem[]>("schedule", [])]);
   }
 
