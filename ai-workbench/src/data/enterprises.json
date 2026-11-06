@@ -37,5 +37,31 @@
       { "id": "orange-story", "type": "story", "title": "品牌背景故事", "content": "返乡青年联合乡邻果农建立直销渠道，让好果子卖上合理价格，也让消费者尝到当季鲜甜。" },
       { "id": "orange-reference", "type": "reference", "title": "历史爆款参考", "content": "剥开一颗赣南脐橙，冬天的阳光就有了味道。" }
     ]
+  },
+  {
+    "id": "clear-dew-skincare",
+    "name": "澄露护肤",
+    "industry": "基础保湿护肤",
+    "location": "上海",
+    "tagline": "把基础保湿做得简单、清楚、容易坚持",
+    "accent": "#9bb8bd",
+    "materials": [
+      { "id": "dew-product", "type": "product", "title": "产品核心参数", "content": "30毫升按压瓶保湿精华；配方含甘油、泛醇与角鲨烷，未添加香精与着色剂；建议洁面后取1—2泵使用，白天后续配合防晒，具体感受因肤质与环境而异。" },
+      { "id": "dew-story", "type": "story", "title": "品牌背景故事", "content": "团队从消费者常见的护肤步骤过多、产品叠加复杂出发，围绕日常基础保湿反复调整肤感与使用步骤，希望让护肤回到容易理解、容易坚持的状态。" },
+      { "id": "dew-reference", "type": "reference", "title": "历史爆款参考", "content": "护肤不一定要做很多层，先把每天都需要的保湿认真做好。" }
+    ]
+  },
+  {
+    "id": "simple-order-home",
+    "name": "简序日用",
+    "industry": "小户型日用收纳",
+    "location": "浙江 · 宁波",
+    "tagline": "让常用的东西有位置，也让日常少一点寻找",
+    "accent": "#b7a58f",
+    "materials": [
+      { "id": "order-product", "type": "product", "title": "产品核心参数", "content": "聚丙烯材质前开式收纳箱，单只外部尺寸约32×22×16厘米；箱体可叠放，前门带卡扣与可更换标签位；适合收纳衣物、纸品及常用小件，使用前需按实际空间测量尺寸。" },
+      { "id": "order-story", "type": "story", "title": "品牌背景故事", "content": "产品团队从租住小户型时反复搬动箱子、寻找物品的经历出发，把拿取动线、尺寸适配和日常维护作为设计重点，希望收纳工具真正服务生活，而不是增加新的整理负担。" },
+      { "id": "order-reference", "type": "reference", "title": "历史爆款参考", "content": "不是把生活藏起来，而是让每件常用的小东西，都能被顺手找到。" }
+    ]
   }
 ]
