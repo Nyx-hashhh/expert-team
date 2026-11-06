@@ -124,3 +124,19 @@
 .shotText{display:block;margin:5px 0;font-size:10px;line-height:1.8;color:#49584d;white-space:pre-line}
 .shotBgm{display:block;font-size:9px;color:#9da89f}
 .demoTag{display:inline-block;font-size:8px;letter-spacing:1px;color:#8ea792;border:1px solid #cfe0d0;border-radius:4px;padding:2px 6px;margin-left:7px;vertical-align:1px;font-weight:400}
+
+/* B 区日历排期 */
+.schedulePanel{margin-top:11px;padding:15px;border:1px solid #dce9dd;border-radius:11px;background:#f8fbf7;box-shadow:0 8px 24px #345c3812}
+.scheduleHeading,.scheduleHeading>div{display:flex;align-items:center;gap:7px}
+.scheduleHeading{justify-content:space-between;color:#426d4c;font-size:12px}
+.scheduleHeading button{display:grid;place-items:center;width:25px;height:25px;border:0;background:transparent;color:#849b88;cursor:pointer}
+.schedulePanel>p{margin:7px 0 12px;color:#7c9180;font-size:10px}
+.scheduleFields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.scheduleFields label{display:grid;gap:6px;min-width:0;color:#637c68;font-size:10px;font-weight:700}
+.scheduleFields input{width:100%;min-width:0;height:36px;padding:0 8px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#33483a;font:inherit;font-size:11px;outline:none;color-scheme:light}
+.scheduleFields input:focus{border-color:#77a984;box-shadow:0 0 0 3px #77a98425}
+.schedulePanel .scheduleError{margin:9px 0 0;color:#b25046;font-size:10px}
+.scheduleConfirm{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;margin-top:12px;border:0;border-radius:7px;background:#4b805b;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.scheduleConfirm:hover{background:#396c48}
+.scheduleToast{position:absolute;right:22px;bottom:74px;z-index:8;display:flex;align-items:center;gap:8px;padding:11px 15px;border:1px solid #c8e3cc;border-radius:9px;background:#f1faf1;color:#3e7a4d;box-shadow:0 10px 30px #233d2930;font-size:12px;font-weight:700;animation:scheduleToastIn .18s ease-out}
+@keyframes scheduleToastIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}

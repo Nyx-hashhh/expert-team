@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus } from "lucide-react";
+import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
@@ -18,7 +18,7 @@ interface PreviewPanelProps {
   onPlatformChange: (platform: Platform) => void;
   onVersionChange: (version: Version) => void;
   onPreviewWidthChange: (width: number) => void;
-  onSchedule: () => void;
+  onSchedule: (scheduledAt: string) => void;
 }
 
 function hashCode(input: string): number {
@@ -86,6 +86,11 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const captureRef = useRef<HTMLDivElement>(null);
   const platformTabsRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
@@ -140,6 +145,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     else if (selectedBounds.right > listBounds.right) list.scrollBy({ left: selectedBounds.right - listBounds.right, behavior: "smooth" });
   }, [activePlatform]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
+  useEffect(() => { if (!scheduleSuccess) return; const timer = setTimeout(() => setScheduleSuccess(false), 1600); return () => clearTimeout(timer); }, [scheduleSuccess]);
   useEffect(() => {
     if (shots.length <= 1 || !playing) return;
     const timer = setInterval(() => setActiveShot((index) => (index + 1) % shots.length), 2400);
@@ -176,6 +182,27 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     const body = [content.title, content.body, ...content.hashtags, ...(content.storyboard?.map((item) => `${item.timeRange}｜${item.shot}｜${item.voiceover}｜${item.bgm}`) ?? [])].join("\n");
     await navigator.clipboard.writeText(body);
     setNotice("已复制到剪贴板");
+  }
+
+  function confirmSchedule(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const scheduled = new Date(`${scheduleDate}T${scheduleTime}`);
+    if (!scheduleDate || !scheduleTime || Number.isNaN(scheduled.getTime())) {
+      setScheduleError("请选择发布日期和时间");
+      return;
+    }
+    if (scheduled.getTime() <= Date.now()) {
+      setScheduleError("请选择将来的发布日期和时间");
+      return;
+    }
+    try {
+      onSchedule(scheduled.toISOString());
+      setScheduleOpen(false);
+      setScheduleSuccess(true);
+      setScheduleError("");
+    } catch {
+      setScheduleError("保存失败，请重试");
+    }
   }
 
   async function exportImage() {
@@ -294,20 +321,31 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <button type="button" className={previewCss.platformTabArrow} aria-label="向左查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: -180, behavior: "smooth" })}><ChevronLeft size={15} /></button>
         <div className={`preview-tabs ${previewCss.platformTabTrack}`} ref={platformTabsRef} aria-label="预览平台，可横向滑动">
           {PLATFORMS.map((platform) => (
-            <button key={platform} type="button" className={activePlatform === platform ? "active" : ""} aria-pressed={activePlatform === platform} onClick={() => onPlatformChange(platform)} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
+            <button key={platform} type="button" className={activePlatform === platform ? "active" : ""} aria-pressed={activePlatform === platform} onClick={() => { setScheduleOpen(false); onPlatformChange(platform); }} disabled={Boolean(result) && !available.includes(platform)}>{PLATFORM_LABELS[platform]}</button>
           ))}
         </div>
         <button type="button" className={previewCss.platformTabArrow} aria-label="向右查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight size={15} /></button>
       </div>
-      <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => onVersionChange(version)} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
+      <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => { setScheduleOpen(false); onVersionChange(version); }} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>
         {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={shownContent} enterprise={enterprise} interaction={interaction} />}
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
         <button onClick={exportImage} disabled={!content || isExporting}><Download size={16} /> {isExporting ? "导出中…" : "导出长图"}</button>
-        <button className="schedule-action" onClick={onSchedule} disabled={!content}><Send size={16} /> 推送日历</button>
+        <button className="schedule-action" onClick={() => { setScheduleOpen((open) => !open); setScheduleError(""); setScheduleSuccess(false); }} disabled={!content} aria-expanded={scheduleOpen} aria-controls="preview-schedule-form"><Send size={16} /> 推送日历</button>
       </div>
+      {scheduleOpen && content && <form id="preview-schedule-form" className={previewCss.schedulePanel} onSubmit={confirmSchedule}>
+        <div className={previewCss.scheduleHeading}><div><CalendarDays size={16} /><strong>选择推送时间</strong></div><button type="button" aria-label="关闭排期设置" onClick={() => setScheduleOpen(false)}><X size={16} /></button></div>
+        <p>为 {PLATFORM_LABELS[activePlatform]} · 版本 {activeVersion} 设置发布日期</p>
+        <div className={previewCss.scheduleFields}>
+          <label>发布日期<input type="date" value={scheduleDate} onChange={(event) => { setScheduleDate(event.target.value); setScheduleError(""); }} required /></label>
+          <label>推送时间<input type="time" value={scheduleTime} onChange={(event) => { setScheduleTime(event.target.value); setScheduleError(""); }} required /></label>
+        </div>
+        {scheduleError && <p className={previewCss.scheduleError} role="alert">{scheduleError}</p>}
+        <button className={previewCss.scheduleConfirm} type="submit"><Check size={15} /> 确认推送</button>
+      </form>}
+      {scheduleSuccess && <div className={previewCss.scheduleToast} role="status"><Check size={16} /> 日历推送成功</div>}
       {notice && <p className="action-notice" role="status">{notice}</p>}
     </section>
   );
