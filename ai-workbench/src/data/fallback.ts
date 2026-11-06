@@ -1,5 +1,6 @@
 import type { ContentVersion, CreativeBrief, Enterprise, GenerateRequest, GenerateResult, Platform, PlatformVersions, TranslationMode } from "@/contracts/content";
 import { buildCreativeBrief } from "@/data/translation";
+import { buildXiaohongshuVersions } from "@/data/xiaohongshu-styles";
 
 interface BrandProfile {
   opening: string;
@@ -221,23 +222,19 @@ function makeVersion(title: string, body: string, hashtags: string[], storyboard
   return { title, body, hashtags, ...(storyboard ? { storyboard } : {}) };
 }
 
-function xiaohongshuBody(draft: Pick<ContentVersion, "body">, tone: string, mode: TranslationMode, profile: BrandProfile, version: "A" | "B") {
-  const modeTransition = mode === "story"
-    ? "把故事往前再走一步，会发现那些看似安静的参数，其实都参与了人物最后的选择。"
-    : mode === "seed"
-      ? "真正影响使用感受的，往往不是一句笼统评价，而是购买前后那些容易被略过的小条件。"
-      : "如果暂时拿掉品牌介绍里的形容词，产品、过程和标准仍然能把差异讲清楚。";
-  const first = version === "A" ? profile.detailWalkthrough : profile.selectionAdvice;
-  const second = version === "A" ? profile.selectionAdvice : profile.detailWalkthrough;
-
-  if (tone === "专业品鉴") return `${draft.body}\n\n${modeTransition}\n\n${first}\n\n再把判断放回真实使用：${second}\n\n基于现有资料，可以形成有条件的结论，但不应把单次观察扩大成普遍效果。个人习惯、操作方式和环境都会改变最终体验，购买前仍要核对自己最在意的那一项。`;
-  if (tone === "年轻活力") return `${draft.body}\n\n故事还没结束，几个不该被一笔带过的细节继续跟上。${modeTransition}\n\n${first}\n\n然后直接切到日常。${second}\n\n信息到这里才算交代完整：不是只给你一张好看的首图，也不是用一句“值得”替你做决定。你最想把哪一个细节继续放大？`;
-  if (tone === "温暖叙事") return `${draft.body}\n\n故事之外，还可以再靠近一点。${modeTransition}\n\n${first}\n\n这些动作与数字最后都会回到人的生活。${second}\n\n一组图文能留下的，不只是一张好看的照片，也可以是一条从来源、过程走到日常的清楚路径。至于答案，不妨留给每个人自己的需要。`;
-  return `${draft.body}\n\n我再把容易忽略的地方摊开说。${modeTransition}\n\n${first}\n\n买回去以后真正会遇到的，是这些：${second}\n\n如果你也在比较同类产品，可以先收藏这些判断点。还有哪项信息没讲清楚，直接问就好；比起催你做决定，我更愿意把条件说完整。`;
-}
-
-function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): Record<Platform, CopyPair> {
+function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief, goal: string): Record<Platform, CopyPair> {
   const base = modeCopies(mode, tone, enterprise, profile, brief);
+  const xiaohongshu = buildXiaohongshuVersions({
+    brand: enterprise.name,
+    industry: enterprise.industry,
+    location: enterprise.location,
+    goal,
+    audience: brief.audience,
+    hook: brief.hook,
+    mode,
+    tone,
+    ...profile,
+  });
   const tag = enterprise.industry.replaceAll(" ", "");
   const modeTag = mode === "story" ? "品牌故事" : mode === "seed" ? "真实体验" : "品牌观察";
   const statement = shortModeStatement(mode, enterprise, profile);
@@ -265,10 +262,7 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
   const dyB = [...dyA].reverse().map((shot, index) => ({ ...shot, timeRange: index === 0 ? "0–3s" : index === dyA.length - 1 ? "16–22s" : `${3 + (index - 1) * 6}–${9 + (index - 1) * 6}s` }));
 
   return {
-    xiaohongshu: {
-      A: makeVersion(base.A.title, xiaohongshuBody(base.A, tone, mode, profile, "A"), [`#${tag}`, `#${modeTag}`, "#真实分享", "#生活灵感"]),
-      B: makeVersion(base.B.title, xiaohongshuBody(base.B, tone, mode, profile, "B"), [`#${enterprise.name}`, "#选购思路", "#适合自己的才重要"]),
-    },
+    xiaohongshu,
     weibo: {
       A: makeVersion(`${enterprise.name}｜一个值得说清的细节`, `${voice.lead}\n\n${brief.hook}\n\n${statement}\n\n${voice.proofBridge}\n\n${voice.close}`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
       B: makeVersion(`关于${enterprise.industry}，品牌应该回答什么`, `${voice.boundaryBridge}\n\n${profile.action}\n\n${profile.boundary}\n\n${voice.close}`, [`#品牌观察#`, `#消费选择#`, `#${enterprise.name}#`]),
@@ -339,7 +333,7 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
   const mode = request.translationMode ?? request.creativeBrief?.mode ?? "story";
   const brief = request.creativeBrief ?? buildCreativeBrief({ contractVersion: 1, enterpriseId: request.enterpriseId, selectedMaterials: request.selectedMaterials, goal, tone: request.tone, mode }, enterprise);
   const profile = profileFor(enterprise, product);
-  const chinese = chinesePlatforms(mode, request.tone, enterprise, profile, brief);
+  const chinese = chinesePlatforms(mode, request.tone, enterprise, profile, brief, goal);
   const english = englishPlatforms(mode, request.tone, enterprise, profile);
   const platforms = Object.fromEntries(request.platforms.map((platform) => {
     if (platform === "reddit" || platform === "discord" || platform === "instagram" || platform === "tiktok") return [platform, english[platform]];
