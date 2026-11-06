@@ -126,15 +126,41 @@
 .demoTag{display:inline-block;font-size:8px;letter-spacing:1px;color:#8ea792;border:1px solid #cfe0d0;border-radius:4px;padding:2px 6px;margin-left:7px;vertical-align:1px;font-weight:400}
 
 /* B 区日历排期 */
-.schedulePanel{margin-top:11px;padding:15px;border:1px solid #dce9dd;border-radius:11px;background:#f8fbf7;box-shadow:0 8px 24px #345c3812}
+.schedulePanel{position:relative;z-index:3;margin-top:11px;padding:15px;border:1px solid #dce9dd;border-radius:11px;background:#f8fbf7;box-shadow:0 8px 24px #345c3812}
 .scheduleHeading,.scheduleHeading>div{display:flex;align-items:center;gap:7px}
 .scheduleHeading{justify-content:space-between;color:#426d4c;font-size:12px}
 .scheduleHeading button{display:grid;place-items:center;width:25px;height:25px;border:0;background:transparent;color:#849b88;cursor:pointer}
 .schedulePanel>p{margin:7px 0 12px;color:#7c9180;font-size:10px}
 .scheduleFields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.scheduleFields label{display:grid;gap:6px;min-width:0;color:#637c68;font-size:10px;font-weight:700}
-.scheduleFields input{width:100%;min-width:0;height:36px;padding:0 8px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#33483a;font:inherit;font-size:11px;outline:none;color-scheme:light}
-.scheduleFields input:focus{border-color:#77a984;box-shadow:0 0 0 3px #77a98425}
+.scheduleField{position:relative;display:grid;gap:6px;min-width:0;color:#637c68;font-size:10px;font-weight:700}
+.pickerTrigger{display:flex;align-items:center;gap:6px;width:100%;min-width:0;height:36px;padding:0 9px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#46644e;font:inherit;font-size:11px;text-align:left;white-space:nowrap;cursor:pointer}
+.pickerTrigger svg:last-child{margin-left:auto;color:#8aa590}
+.pickerTrigger:hover,.pickerTrigger[aria-expanded="true"]{border-color:#8eb99a;background:#fcfefb}
+.pickerTrigger:focus-visible,.datePopover button:focus-visible,.timePopover button:focus-visible{outline:2px solid #77a984;outline-offset:2px}
+.datePopover,.timePopover{position:absolute;bottom:100%;z-index:25;border:1px solid #d8e7da;border-radius:12px;background:#fff;box-shadow:0 14px 34px #284a2d2b;color:#3c5743;font-size:11px}
+.datePopover{left:0;width:270px;padding:13px}
+.calendarTop,.calendarTop>div{display:flex;align-items:center;justify-content:space-between}
+.calendarTop{padding:0 1px 10px}
+.calendarTop strong{font-size:12px}
+.calendarTop button{display:grid;place-items:center;width:25px;height:25px;margin-left:2px;border:0;border-radius:6px;background:#f1f7f0;color:#5d8667;cursor:pointer}
+.calendarTop button:hover{background:#e3f0e2}
+.calendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;text-align:center}
+.calendarGrid span{padding:6px 0;color:#9aac9d;font-size:10px}
+.calendarGrid button{height:29px;border:0;border-radius:7px;background:transparent;color:#536e59;font:inherit;cursor:pointer}
+.calendarGrid button:hover{background:#eaf4e9}
+.calendarGrid .outsideMonth{color:#bac8ba}
+.calendarGrid .selectedDay,.calendarGrid .selectedDay:hover{background:#4b805b;color:#fff;font-weight:700}
+.todayButton{width:100%;margin-top:9px;padding:8px;border:1px solid #dceadc;border-radius:7px;background:#f5faf4;color:#4d8058;font:inherit;font-weight:700;cursor:pointer}
+.timePopover{right:0;width:192px;padding:12px}
+.timeCaption{display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;border-bottom:1px solid #edf2ed}
+.timeCaption small{color:#9bac9e;font-size:9px}
+.timeColumns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.timeColumns>div{display:flex;flex-direction:column;align-items:stretch;max-height:188px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.timeColumns span{position:sticky;top:0;padding:5px;background:#fff;color:#96aa99;font-size:9px;text-align:center}
+.timeColumns button{flex:none;min-height:29px;border:0;border-radius:6px;background:transparent;color:#536e59;font:inherit;cursor:pointer}
+.timeColumns button:hover{background:#eaf4e9}
+.timeColumns .selectedTime,.timeColumns .selectedTime:hover{background:#4b805b;color:#fff;font-weight:700}
+.timeSummary{margin-top:9px;padding-top:9px;border-top:1px solid #edf2ed;color:#5e8667;text-align:center;font-size:10px}
 .schedulePanel .scheduleError{margin:9px 0 0;color:#b25046;font-size:10px}
 .scheduleConfirm{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:36px;margin-top:12px;border:0;border-radius:7px;background:#4b805b;color:#fff;font-size:11px;font-weight:700;cursor:pointer}
 .scheduleConfirm:hover{background:#396c48}

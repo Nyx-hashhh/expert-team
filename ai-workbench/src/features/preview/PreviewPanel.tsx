@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
+import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
@@ -38,6 +38,10 @@ function formatCount(value: number): string {
 
 function formatInstagramCount(value: number): string {
   return value >= 10000 ? `${(value / 1000).toFixed(1)}K` : value.toLocaleString("en-US");
+}
+
+function dateValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 const DEMO_HEROES: Partial<Record<string, { image: typeof springTeaHero; alt: string }>> = {
@@ -91,6 +95,8 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const [scheduleTime, setScheduleTime] = useState("");
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
+  const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
@@ -103,6 +109,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const available = Object.keys(result?.platforms ?? {}) as Platform[];
   const content = result?.platforms[activePlatform]?.[activeVersion];
   const shots = content?.storyboard ?? [];
+  const selectedHour = scheduleTime ? scheduleTime.slice(0, 2) : "";
+  const selectedMinute = scheduleTime ? scheduleTime.slice(3, 5) : "";
+  const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const calendarOffset = (monthStart.getDay() + 6) % 7;
+  const calendarDays = Array.from({ length: Math.ceil((calendarOffset + new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate()) / 7) * 7 }, (_, index) => {
+    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - calendarOffset + 1);
+    return { date, value: dateValue(date), inMonth: date.getMonth() === calendarMonth.getMonth() };
+  });
 
   useEffect(() => {
     if (!content || result?.source !== "fallback") return;
@@ -198,6 +212,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     try {
       onSchedule(scheduled.toISOString());
       setScheduleOpen(false);
+      setActivePicker(null);
       setScheduleSuccess(true);
       setScheduleError("");
     } catch {
@@ -333,14 +348,26 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>
         <button onClick={exportImage} disabled={!content || isExporting}><Download size={16} /> {isExporting ? "导出中…" : "导出长图"}</button>
-        <button className="schedule-action" onClick={() => { setScheduleOpen((open) => !open); setScheduleError(""); setScheduleSuccess(false); }} disabled={!content} aria-expanded={scheduleOpen} aria-controls="preview-schedule-form"><Send size={16} /> 推送日历</button>
+        <button className="schedule-action" onClick={() => { setScheduleOpen((open) => !open); setActivePicker(null); setScheduleError(""); setScheduleSuccess(false); }} disabled={!content} aria-expanded={scheduleOpen} aria-controls="preview-schedule-form"><Send size={16} /> 推送日历</button>
       </div>
       {scheduleOpen && content && <form id="preview-schedule-form" className={previewCss.schedulePanel} onSubmit={confirmSchedule}>
         <div className={previewCss.scheduleHeading}><div><CalendarDays size={16} /><strong>选择推送时间</strong></div><button type="button" aria-label="关闭排期设置" onClick={() => setScheduleOpen(false)}><X size={16} /></button></div>
         <p>为 {PLATFORM_LABELS[activePlatform]} · 版本 {activeVersion} 设置发布日期</p>
         <div className={previewCss.scheduleFields}>
-          <label>发布日期<input type="date" value={scheduleDate} onChange={(event) => { setScheduleDate(event.target.value); setScheduleError(""); }} required /></label>
-          <label>推送时间<input type="time" value={scheduleTime} onChange={(event) => { setScheduleTime(event.target.value); setScheduleError(""); }} required /></label>
+          <div className={previewCss.scheduleField} onMouseLeave={() => setActivePicker((current) => current === "date" ? null : current)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActivePicker((current) => current === "date" ? null : current); }}>
+            <span>发布日期</span>
+            <button type="button" className={previewCss.pickerTrigger} aria-label="选择发布日期" aria-expanded={activePicker === "date"} onClick={() => { setActivePicker(activePicker === "date" ? null : "date"); if (scheduleDate) { const selected = new Date(`${scheduleDate}T12:00`); setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)); } }}><CalendarDays size={14} />{scheduleDate || "选择日期"}<ChevronDown size={13} /></button>
+            {activePicker === "date" && <div className={previewCss.datePopover} role="group" aria-label="发布日期日历">
+              <div className={previewCss.calendarTop}><strong>{calendarMonth.getFullYear()} 年 {calendarMonth.getMonth() + 1} 月</strong><div><button type="button" aria-label="上个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}><ChevronLeft size={15} /></button><button type="button" aria-label="下个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}><ChevronRight size={15} /></button></div></div>
+              <div className={previewCss.calendarGrid}>{["一", "二", "三", "四", "五", "六", "日"].map((day) => <span key={day}>{day}</span>)}{calendarDays.map(({ date, value, inMonth }) => <button key={value} type="button" className={`${!inMonth ? previewCss.outsideMonth : ""} ${value === scheduleDate ? previewCss.selectedDay : ""}`} aria-label={value} aria-pressed={value === scheduleDate} onClick={() => { setScheduleDate(value); setScheduleError(""); if (!inMonth) setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1)); }}>{date.getDate()}</button>)}</div>
+              <button type="button" className={previewCss.todayButton} onClick={() => { const today = new Date(); setScheduleDate(dateValue(today)); setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setScheduleError(""); }}>选择今天</button>
+            </div>}
+          </div>
+          <div className={previewCss.scheduleField} onMouseLeave={() => setActivePicker((current) => current === "time" ? null : current)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActivePicker((current) => current === "time" ? null : current); }}>
+            <span>推送时间</span>
+            <button type="button" className={previewCss.pickerTrigger} aria-label="选择推送时间" aria-expanded={activePicker === "time"} onClick={() => setActivePicker(activePicker === "time" ? null : "time")}><Clock3 size={14} />{scheduleTime || "选择时间"}<ChevronDown size={13} /></button>
+            {activePicker === "time" && <div className={previewCss.timePopover} role="group" aria-label="推送时间选择"><div className={previewCss.timeCaption}><strong>选择时间</strong><small>24 小时制</small></div><div className={previewCss.timeColumns}><div><span>小时</span>{Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0")).map((hour) => <button key={hour} type="button" className={selectedHour === hour ? previewCss.selectedTime : ""} aria-pressed={selectedHour === hour} onClick={() => { setScheduleTime(`${hour}:${selectedMinute || "00"}`); setScheduleError(""); }}>{hour}</button>)}</div><div><span>分钟</span>{Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0")).map((minute) => <button key={minute} type="button" className={selectedMinute === minute ? previewCss.selectedTime : ""} aria-pressed={selectedMinute === minute} onClick={() => { setScheduleTime(`${selectedHour || "00"}:${minute}`); setScheduleError(""); }}>{minute}</button>)}</div></div><div className={previewCss.timeSummary}>已选 {scheduleTime || "--:--"}</div></div>}
+          </div>
         </div>
         {scheduleError && <p className={previewCss.scheduleError} role="alert">{scheduleError}</p>}
         <button className={previewCss.scheduleConfirm} type="submit"><Check size={15} /> 确认推送</button>
