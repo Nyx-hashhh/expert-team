@@ -1,0 +1,55 @@
+import type { Enterprise, Platform, TranslationMode } from "@/contracts/content";
+
+export type CopyCategory = "agricultural" | "heritage" | "beauty" | "daily" | "general";
+
+const categoryRules: Record<CopyCategory, string> = {
+  agricultural: "这是农产品内容。优先使用产地、品种、时令、生产方式、分级、物流、风味与储存事实；承认批次、外观和口感的自然差异，不虚构有机、零农残、助农效果或统一口感。",
+  heritage: "这是非遗或文化体验内容。准确说明技艺来源、传承关系、材料、工序与当代使用；不得把普通手作直接称为非遗，不杜撰传承年代、文化寓意或匠人经历。",
+  beauty: "这是美妆内容。交代肤质或发质、使用条件、质地、步骤、周期与个体差异；功效、敏感肌、安全和前后效果必须有合规依据，不制造容貌焦虑。",
+  daily: "这是日用品内容。围绕空间、动作、材质、结构、耐用、维护、安全与长期成本；承重、耐热、抑菌、去污率等必须有测试依据。",
+  general: "先识别产品的使用场景、核心事实、消费者利益与证据边界；不得用行业套话替代具体信息。",
+};
+
+export const platformRules: Record<Platform, string> = {
+  xiaohongshu: "小红书：用生活场景建立自我关联，正文适合分段、步骤或体验复盘；说清适合谁与边界，以收藏、提问或交流收尾，禁止伪装素人笔记。",
+  weibo: "微博：首句直接交付事件、观点或反差；用少量段落给出核心事实与一句可讨论判断，结尾提出具体问题。",
+  douyin: "抖音：前3秒必须可理解；画面负责展示动作和证据，口播负责因果；分镜按钩子、场景、验证、结论推进，每个卖点有对应画面。",
+  reddit: "Reddit：准确标题，主动披露与品牌关系，完整说明背景、尝试、证据、结果与局限，以社区能够回答的具体问题结束，弱化促销。",
+  discord: "Discord：内容短、可回复、可参与；用公告、抢先看、幕后、投票或共创组织信息，写清成员下一步动作与后续节点。",
+  instagram: "Instagram：让图片或轮播承担主要叙事，Caption补充画面之外的因果与背景；保持视觉母题和简洁节奏，结尾引导保存或评论。",
+  tiktok: "TikTok：0-2秒强视觉钩子，快速建立人物与需要，用演示或过程完成证明；按目标语言与文化重写，标题、正文、标签和分镜语言一致。",
+};
+
+const toneRules: Record<string, string> = {
+  闺蜜安利: "闺蜜安利：像平等朋友分享，口语自然、具体坦诚；先讲为什么需要，再讲产品，同时说明适合与不适合，禁止极端推荐和伪造体验。",
+  专业品鉴: "专业品鉴：先说明评价条件与标准，区分参数、观察、感受和推论；术语准确但要解释，结论有条件、有边界。",
+  年轻活力: "年轻活力：开场快、短句多、动词明确、互动自然；活力来自节奏和画面，不靠热梗堆叠、感叹号或制造焦虑。",
+  温暖叙事: "温暖叙事：节奏舒缓，以动作、感官、关系和留白产生情绪；不直接喊感动治愈，不虚构苦难，不强行升华。",
+};
+
+export function detectCopyCategory(enterprise: Enterprise): CopyCategory {
+  const text = `${enterprise.id} ${enterprise.industry} ${enterprise.name}`;
+  if (/茶|果|橙|农业|农产|生鲜|粮|咖啡|食品/.test(text)) return "agricultural";
+  if (/非遗|文旅|古镇|手作|工艺|文化/.test(text)) return "heritage";
+  if (/美妆|护肤|彩妆|洗护|香氛/.test(text)) return "beauty";
+  if (/日用|清洁|收纳|家居|厨房|家纺/.test(text)) return "daily";
+  return "general";
+}
+
+export function getToneRule(tone: string) {
+  return toneRules[tone] ?? `使用“${tone}”语调，但不得改变事实、证据边界和叙事结构。`;
+}
+
+export function buildRuntimeGenerationInstruction(enterprise: Enterprise, mode: TranslationMode, tone: string, platforms: Platform[], modeInstruction: string) {
+  const category = detectCopyCategory(enterprise);
+  const selectedPlatformRules = platforms.map((platform) => platformRules[platform]).join(" ");
+  return [
+    `主叙事模式：${modeInstruction}`,
+    `品类规则：${categoryRules[category]}`,
+    `表达语调：${getToneRule(tone)}`,
+    `平台规则：${selectedPlatformRules}`,
+    "组合优先级：真实性与安全 > 叙事模式 > 品类证据 > 平台结构 > 表达语调 > 热点与修辞。",
+    "各平台共享同一事实底座与核心主张，但必须使用平台原生结构；不得把同一正文裁切后复制。A/B两版至少更换核心切口、主角或场景、证据顺序、开场钩子、互动方式中的两项。",
+    "文字必须通顺、自然、有具体细节和个性；避免套话、整齐排比、模板化小标题、无依据的夸张与突然拔高。",
+  ].join(" ");
+}
