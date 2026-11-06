@@ -96,7 +96,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date(2000, 0, 1));
   const [isExporting, setIsExporting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
@@ -356,7 +356,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <div className={previewCss.scheduleFields}>
           <div className={previewCss.scheduleField} onMouseLeave={() => setActivePicker((current) => current === "date" ? null : current)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setActivePicker((current) => current === "date" ? null : current); }}>
             <span>发布日期</span>
-            <button type="button" className={previewCss.pickerTrigger} aria-label="选择发布日期" aria-expanded={activePicker === "date"} onClick={() => { setActivePicker(activePicker === "date" ? null : "date"); if (scheduleDate) { const selected = new Date(`${scheduleDate}T12:00`); setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)); } }}><CalendarDays size={14} />{scheduleDate || "选择日期"}<ChevronDown size={13} /></button>
+            <button type="button" className={previewCss.pickerTrigger} aria-label="选择发布日期" aria-expanded={activePicker === "date"} onClick={() => { const opening = activePicker !== "date"; setActivePicker(opening ? "date" : null); if (opening) { const selected = scheduleDate ? new Date(`${scheduleDate}T12:00`) : new Date(); setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)); } }}><CalendarDays size={14} />{scheduleDate || "选择日期"}<ChevronDown size={13} /></button>
             {activePicker === "date" && <div className={previewCss.datePopover} role="group" aria-label="发布日期日历">
               <div className={previewCss.calendarTop}><strong>{calendarMonth.getFullYear()} 年 {calendarMonth.getMonth() + 1} 月</strong><div><button type="button" aria-label="上个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}><ChevronLeft size={15} /></button><button type="button" aria-label="下个月" onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}><ChevronRight size={15} /></button></div></div>
               <div className={previewCss.calendarGrid}>{["一", "二", "三", "四", "五", "六", "日"].map((day) => <span key={day}>{day}</span>)}{calendarDays.map(({ date, value, inMonth }) => <button key={value} type="button" className={`${!inMonth ? previewCss.outsideMonth : ""} ${value === scheduleDate ? previewCss.selectedDay : ""}`} aria-label={value} aria-pressed={value === scheduleDate} onClick={() => { setScheduleDate(value); setScheduleError(""); if (!inMonth) setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1)); }}>{date.getDate()}</button>)}</div>
