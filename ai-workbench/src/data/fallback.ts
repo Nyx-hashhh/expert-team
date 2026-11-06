@@ -22,6 +22,11 @@ interface CopyPair {
   B: ContentVersion;
 }
 
+interface DraftPair {
+  A: Pick<ContentVersion, "title" | "body">;
+  B: Pick<ContentVersion, "title" | "body">;
+}
+
 function profileFor(enterprise: Enterprise, product: string): BrandProfile {
   if (enterprise.id === "spring-tea") return {
     opening: "安吉清晨的雾还没有散，海拔800米的茶园里，一芽一叶刚刚舒展开。",
@@ -85,49 +90,115 @@ function profileFor(enterprise: Enterprise, product: string): BrandProfile {
   };
 }
 
-function toneLine(tone: string, kind: "lead" | "close") {
-  const lines: Record<string, [string, string]> = {
-    闺蜜安利: ["先不急着下结论，我把真实的选择和使用过程讲给你听。", "如果你的情况也差不多，可以从这些细节判断它合不合适。"],
-    专业品鉴: ["先看判断条件，再谈结论：产地、过程、规格和使用场景缺一不可。", "选择不必听口号，回到参数、过程和自己的实际需要就够了。"],
-    年轻活力: ["别只看第一眼，真正有意思的都藏在过程里。", "你更想先看哪个细节？评论区选一个，我们继续拆。"],
-    温暖叙事: ["有些好东西不急着说服人，它先在日常里留下一个安静的瞬间。", "愿这份来自具体地方、具体双手的认真，也能抵达你的日常。"],
-  };
-  return (lines[tone] ?? [`用“${tone}”的方式，从真实细节开始。`, "答案留给真实的使用和选择。"])[kind === "lead" ? 0 : 1];
+interface ToneVoice {
+  lead: string;
+  proofBridge: string;
+  boundaryBridge: string;
+  close: string;
+  videoHook: string;
+  communityAction: string;
 }
 
-function modeCopies(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief) {
-  const lead = toneLine(tone, "lead");
-  const close = toneLine(tone, "close");
-  if (mode === "seed") return {
-    A: {
-      title: `把${enterprise.name}放进真实日常后，我更在意这几件事`,
-      body: `${lead}\n\n最初的需要很具体：${brief.audience}想在合适的场景里找到一个不费力、也不含糊的选择。${brief.coreMessage}\n\n于是我先看过程，再看产品。${profile.action}\n\n真正使用时，最有参考价值的是：${profile.experience}\n\n${profile.fit}\n\n也把边界说在前面：${profile.boundary}\n\n${close}`,
-    },
-    B: {
-      title: `不是“闭眼入”，而是先看它适不适合你`,
-      body: `${profile.alternateOpening}\n\n选择之前，我会先问三个问题：来源是否清楚，使用是否顺手，规格是否适合自己的生活。${enterprise.name}给出的答案是：${profile.action}\n\n它最打动人的并非一句夸奖，而是一个明确场景——${profile.experience}\n\n${brief.coreMessage}\n\n${profile.fit} ${profile.boundary}\n\n${close}`,
-    },
+function voiceFor(tone: string): ToneVoice {
+  if (tone === "专业品鉴") return {
+    lead: "先建立评价条件，再谈结论。",
+    proofBridge: "把主观印象拆开看，真正有效的是参数、过程与使用条件之间能否互相印证。",
+    boundaryBridge: "结论需要附带适用条件。",
+    close: "回到可验证的事实和自己的实际需要，判断会比口号可靠。",
+    videoHook: "先定标准：这类产品到底应该看什么？",
+    communityAction: "请按“最想核验的指标”投票，我们会在下一期逐项公开依据。",
   };
-  if (mode === "brand") return {
-    A: {
-      title: `${enterprise.name}想占据的，不是热闹，而是一个清楚的选择理由`,
-      body: `${enterprise.name}属于${enterprise.industry}。它希望被记住的核心，不是一串宽泛形容词，而是具体、稳定、可核验。\n\n${profile.strength}\n\n${brief.coreMessage}\n\n这些专业能力最终要回到消费者：${profile.benefit}\n\n品牌心智不是喊出来的。每一次产品、服务和内容，都需要重复兑现同一件事。${close}`,
-    },
-    B: {
-      title: `同类选择很多，为什么记住${enterprise.name}`,
-      body: `${lead}\n\n品牌的差异要经得起追问：从哪里来，谁在做，用什么标准，最后为消费者解决什么。\n\n${profile.action}\n\n${profile.strength}\n\n${brief.coreMessage}\n\n因此，${enterprise.name}给出的购买理由很明确：${profile.benefit}\n\n没有完整来源的“第一”和“领先”不写；能长期被验证的事实，才是品牌真正的背书。`,
-    },
+  if (tone === "年轻活力") return {
+    lead: "时间不等人，先把关键场景拉到眼前。",
+    proofBridge: "别停在第一眼。动作继续，过程继续，真正的差异要在关键一刻接得住。",
+    boundaryBridge: "好用不等于万能，边界也得说快、说清。",
+    close: "下一回合想拆哪个细节？选一个，我们直接上现场。",
+    videoHook: "先别划走——这个细节马上要经受一次真实考验。",
+    communityAction: "回复1看过程、2看实测、3看证据，票高的下一条直接拍。",
+  };
+  if (tone === "温暖叙事") return {
+    lead: "有些选择不急着发出声音，它先在日常里留下一个安静的画面。",
+    proofBridge: "人记住的往往不是一句卖点，而是双手怎样做、时间怎样经过，最后有什么被认真留下。",
+    boundaryBridge: "温柔并不意味着回避真实。",
+    close: "愿这份来自具体地方、具体双手的认真，也能在你的日常里找到位置。",
+    videoHook: "镜头先别给品牌，先听一听这个地方原本的声音。",
+    communityAction: "如果你愿意，告诉我们最想继续听哪一段，我们慢慢把它讲完。",
   };
   return {
-    A: {
-      title: brief.hook,
-      body: `${profile.opening}\n\n${profile.tension}\n\n事情的转折不在一句广告里，而在一个具体选择中：${profile.action}\n\n于是，产品的意义才慢慢落到生活里。${profile.experience}\n\n${brief.coreMessage}\n\n${profile.benefit}\n\n${close}`,
-    },
-    B: {
-      title: `故事从一个没有被省略的细节开始`,
-      body: `${profile.alternateOpening}\n\n起初，人只是想解决一个普通问题。比较、犹豫，再回到真正重要的标准，过程并不戏剧化，却足够真实。\n\n${profile.tension}\n\n最后留下来的，是这项选择：${profile.action}\n\n${profile.benefit}\n\n回到最初的画面，日常没有突然改变，只是多了一个更清楚、更安心的选择。${close}`,
-    },
+    lead: "先别听我下结论，我把怎么选、怎么用、哪里合适都摊开说。",
+    proofBridge: "像给朋友挑东西一样，我更在意它进了真实生活以后顺不顺手。",
+    boundaryBridge: "喜欢归喜欢，不合适的情况也得提前告诉你。",
+    close: "如果你的情况和我说的差不多，再从这些细节判断要不要继续了解。",
+    videoHook: "姐妹先别冲，跟我把真实过程走一遍。",
+    communityAction: "你把最纠结的地方丢进评论，我按大家的问题继续补体验。",
   };
+}
+
+function friendlyCopies(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): DraftPair {
+  if (mode === "seed") return {
+    A: { title: `先别急着被种草，我把${enterprise.name}怎么用讲清楚`, body: `你可能也遇到过：想找一个适合${brief.audience}的选择，介绍看了不少，真正放进生活却不知道顺不顺手。\n\n我会先看来源和过程。${profile.action}\n\n再看它进了日常以后怎样。${profile.experience}\n\n对我来说，有参考价值的不是“好用”两个字，而是这些具体条件：${profile.fit}\n\n也替你把容易忽略的地方问了：${profile.boundary}\n\n情况接近的话，可以从这些细节继续判断，不用被一句“闭眼入”推着走。` },
+    B: { title: `像给家里人挑东西一样，我会先问这几个问题`, body: `先把一个很容易代入的场景讲给你：${profile.alternateOpening}\n\n如果是给自己或家里人选，我会问：来自哪里？怎么做？使用起来麻不麻烦？${enterprise.name}目前能说清的是：${profile.action}\n\n${profile.experience}\n\n所以它更适合${profile.fit.replace(/^适合/, "")}\n\n但这句也要放在推荐前面：${profile.boundary}\n\n把需求对上，比跟着热闹下单踏实。` },
+  };
+  if (mode === "brand") return {
+    A: { title: `朋友问我为什么记住${enterprise.name}，答案不是一句“用心”`, body: `同类品牌那么多，能让我记住的，通常是它有没有把一件事反复做好。\n\n${profile.strength}\n\n翻成我们买东西时真正关心的话，就是：${profile.benefit}\n\n不急着喊第一，也不拿一墙荣誉压人。能把来源、过程和边界讲清楚，才是一个品牌值得继续认识的开始。` },
+    B: { title: `不聊大词，聊聊${enterprise.name}到底凭什么被选择`, body: `如果把品牌介绍里的形容词都删掉，还剩下什么？\n\n${profile.action}\n\n这些事构成了${enterprise.name}在${enterprise.industry}里的真实位置：${profile.strength}\n\n对消费者而言，它不是遥远的品牌宣言，而是${profile.benefit}\n\n这就是我愿意把它介绍给朋友的理由——具体，而且能被继续验证。` },
+  };
+  return {
+    A: { title: `我想把${enterprise.name}背后的这件小事讲给你听`, body: `你先跟我到故事开始的地方看看。${profile.opening}\n\n一开始，没有谁想着讲一个多么传奇的故事。大家只是遇到了一个很现实的问题：${profile.tension}\n\n犹豫过，也比较过。最后决定没有被省略——${profile.action}\n\n真正让人放下心来的，是它后来进入日常的样子：${profile.experience}\n\n${profile.benefit}\n\n如果你也在意这些细节，这个故事或许正好能替你多问一步。` },
+    B: { title: `不是广告里的高光，是一个普通人会在意的瞬间`, body: `先说一个我很想分享的画面：${profile.alternateOpening}\n\n人真正做选择时，很少只看漂亮的一面。会担心，会反复确认，也会问一句：这件东西到底和我的生活有什么关系？\n\n答案藏在过程里。${profile.action}\n\n也落在结果里。${profile.benefit}\n\n${profile.boundary}\n\n故事讲到这里，不催你下结论。把它留作一次认真选择的参考就好。` },
+  };
+}
+
+function professionalCopies(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): DraftPair {
+  if (mode === "seed") return {
+    A: { title: `${enterprise.name}体验分析：先看条件，再谈是否值得选择`, body: `评价对象：${enterprise.industry}。目标人群：${brief.audience}。\n\n第一项看产品与过程。${profile.action}\n\n第二项看场景适配。${profile.experience}\n\n第三项看消费者收益。${profile.benefit}\n\n基于现有信息，${profile.fit}\n\n结论需要附带限制：${profile.boundary}\n\n这不是适用于所有人的推荐，而是一份有条件的判断。` },
+    B: { title: `把体验拆成四个判断维度，${enterprise.name}表现在哪里`, body: `一、来源与过程：${profile.action}\n\n二、实际使用：${profile.experience}\n\n三、核心利益：${profile.benefit}\n\n四、适配边界：${profile.boundary}\n\n如果你的优先级与${profile.fit.replace(/^适合/, "")}相符，它具有继续了解的价值；反之，应先比较规格、口味或使用条件。` },
+  };
+  if (mode === "brand") return {
+    A: { title: `${enterprise.name}的品牌资产，应该如何被验证`, body: `品牌认知需要三个层次：品类定锚、专业能力、消费者利益。\n\n品类：${enterprise.industry}。\n\n专业底座：${profile.strength}\n\n产品与行动：${profile.action}\n\n消费者利益：${profile.benefit}\n\n现阶段可使用以上事实建立认知；没有完整统计口径的销量、好评与排名，不应作为权威结论。` },
+    B: { title: `同类品牌比较时，${enterprise.name}提供了哪些有效信息`, body: `判断品牌是否值得优先选择，不宜从口号开始。\n\n先看其差异是否可说明：${profile.action}\n\n再看能力是否持续：${profile.strength}\n\n最后看这些能力是否转化为真实利益：${profile.benefit}\n\n因此，${enterprise.name}更适合以“可追溯过程与明确场景”建立长期心智，而不是争夺无法核验的泛化标签。` },
+  };
+  return {
+    A: { title: `从一个具体事件看${enterprise.name}的产品逻辑`, body: `观察起点：${profile.opening}\n\n事件的前提是：${profile.tension}\n\n关键选择发生在过程而非宣传阶段。${profile.action}\n\n这项选择随后在实际场景中得到验证：${profile.experience}\n\n由此可以得出条件化结论——${profile.benefit}\n\n${profile.boundary}\n\n故事提供情境，事实负责证明；二者不能互相替代。` },
+    B: { title: `一次选择、一个验证：拆解${enterprise.name}的故事证据`, body: `观察记录从这个结果开始：${profile.alternateOpening}\n\n如果按叙事因果拆分，起点是现实需求，阻力是${profile.tension}\n\n高潮不是情绪放大，而是这项决定：${profile.action}\n\n结果则落在${profile.experience}\n\n${profile.benefit}\n\n所有判断均应限定在现有素材与使用条件内。` },
+  };
+}
+
+function youthfulCopies(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile): DraftPair {
+  if (mode === "seed") return {
+    A: { title: `先别冲！${enterprise.name}放进真实场景后是这种画风`, body: `需求出现。开始比较。然后问题来了：好看是一回事，真正用起来顺不顺又是另一回事。\n\n先看它怎么做——${profile.action}\n\n再把它扔进日常——${profile.experience}\n\n关键结果：${profile.benefit}\n\n适配名单：${profile.fit}\n\n边界也不藏：${profile.boundary}\n\n信息给齐。要不要继续了解，你来拍板。` },
+    B: { title: `${enterprise.name}体验闯关：第一关就看真实细节`, body: `体验闯关现在开始。先上场景：${profile.alternateOpening}\n\n第一关，来源和过程能不能讲明白？${profile.action}\n\n第二关，到了真实场景会不会掉链子？${profile.experience}\n\n第三关，究竟适合谁？${profile.fit}\n\n最后一关最重要：${profile.boundary}\n\n不喊“闭眼入”。眼睛睁开，反而更容易选对。` },
+  };
+  if (mode === "brand") return {
+    A: { title: `品牌很多，${enterprise.name}凭什么挤进你的记忆区`, body: `先报赛道：${enterprise.industry}。\n\n再亮核心能力：${profile.strength}\n\n不绕弯，直接看行动：${profile.action}\n\n这些最后换来什么？${profile.benefit}\n\n心智位置不是抢麦抢来的。每次都把同一件事做好，名字自然会被记住。` },
+    B: { title: `删掉“领先”和“匠心”，${enterprise.name}还剩什么`, body: `这题很直接。\n\n剩下产地、过程、规格、团队和真实场景。${profile.action}\n\n剩下能持续重复的能力。${profile.strength}\n\n也剩下消费者能拿到的明确价值：${profile.benefit}\n\n这才是品牌的有效记忆点。短，清楚，能验证。` },
+  };
+  return {
+    A: { title: `开场就出状况，但${enterprise.name}的故事这才刚开始`, body: `镜头推近。${profile.opening}\n\n下一秒，现实问题上线：${profile.tension}\n\n没有神转折。有人动手，有人判断，然后做了这个选择——${profile.action}\n\n关键时刻到了。${profile.experience}\n\n结果不是一句“太好了”，而是${profile.benefit}\n\n故事收住。细节留下。你记住的是哪一幕？` },
+    B: { title: `把结果倒放一次，看看一个好选择怎么长出来`, body: `结果先上屏：${profile.alternateOpening}\n\n暂停。倒回去。\n\n最初只是一个普通需求，随后碰上${profile.tension}\n\n再往前，是没有被跳过的动作：${profile.action}\n\n于是结果成立——${profile.benefit}\n\n没有传奇滤镜。真实过程本身，就够有力量。` },
+  };
+}
+
+function warmCopies(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): DraftPair {
+  if (mode === "seed") return {
+    A: { title: `一件东西适不适合日常，要让时间和动作慢慢回答`, body: `${profile.alternateOpening}\n\n最初的需要并不复杂。${brief.audience}只是想找到一个不打扰生活、又能把事情做好一点的选择。\n\n于是先看它从哪里来，怎样被做出来。${profile.action}\n\n再看它进入日常后的样子。${profile.experience}\n\n${profile.fit}\n\n也不回避这份真实：${profile.boundary}\n\n好的分享不替人决定，只把一路感受到的细节轻轻放在桌面上。` },
+    B: { title: `用过以后，真正留下来的不是惊叹，而是一点从容`, body: `${profile.opening}\n\n选择之前，人总会犹豫。怕不合适，也怕买来的东西很快被遗忘。\n\n${profile.action}\n\n当它真正被使用，价值才有了形状：${profile.experience}\n\n${profile.benefit}\n\n至于是否适合自己，还要记得${profile.boundary}\n\n慢一点判断，也是一种对生活的认真。` },
+  };
+  if (mode === "brand") return {
+    A: { title: `${enterprise.name}想被记住的，是一件长期做下去的事`, body: `${profile.opening}\n\n品牌的名字出现以前，先有人在具体的地方，重复做着具体的事。${profile.action}\n\n时间把这些动作慢慢沉淀成能力：${profile.strength}\n\n它最终抵达消费者时，变成${profile.benefit}\n\n被记住不必靠更响亮的声音。一次次兑现同一个承诺，名字自然会有重量。` },
+    B: { title: `从${enterprise.location}出发，一个品牌怎样住进人的记忆`, body: `${profile.alternateOpening}\n\n人们或许先遇见产品，后来才知道背后是谁、为何这样做。\n\n${profile.strength}\n\n专业并不冰冷。它落在每次选择、每道流程，也落在愿意说明边界的坦诚里。${profile.boundary}\n\n${profile.benefit}\n\n这便是${enterprise.name}希望留下的品牌印象。` },
+  };
+  return {
+    A: { title: brief.hook, body: `${profile.opening}\n\n故事从这里展开。人物有自己的愿望，现实也有不肯让步的部分：${profile.tension}\n\n时间往前走，犹豫没有被略去。直到一个决定落下来——${profile.action}\n\n这是故事最紧的一刻，也是产品特征真正被看见的一刻。后来，${profile.experience}\n\n${profile.benefit}\n\n日常并没有因此变得宏大，只是多了一份可以被触摸、被记住的认真。` },
+    B: { title: `那一天过去以后，一个细节仍留在日常里`, body: `${profile.alternateOpening}\n\n起初，人只是想解决一件普通的小事。寻找的过程有迟疑，也有不得不面对的困难。${profile.tension}\n\n最后，他们没有绕开那道难题。${profile.action}\n\n事情落定以后，改变很具体：${profile.benefit}\n\n镜头回到开头。光线、声音和人的动作仍旧平常，只是我们已经知道，这个细节为何值得留下。` },
+  };
+}
+
+function modeCopies(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): DraftPair {
+  if (tone === "专业品鉴") return professionalCopies(mode, enterprise, profile, brief);
+  if (tone === "年轻活力") return youthfulCopies(mode, enterprise, profile);
+  if (tone === "温暖叙事") return warmCopies(mode, enterprise, profile, brief);
+  return friendlyCopies(mode, enterprise, profile, brief);
 }
 
 function shortModeStatement(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile) {
@@ -145,24 +216,23 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
   const tag = enterprise.industry.replaceAll(" ", "");
   const modeTag = mode === "story" ? "品牌故事" : mode === "seed" ? "真实体验" : "品牌观察";
   const statement = shortModeStatement(mode, enterprise, profile);
-  const toneLead = toneLine(tone, "lead");
-  const toneClose = toneLine(tone, "close");
+  const voice = voiceFor(tone);
   const dyA = mode === "story"
     ? [
         { timeRange: "0–3s", shot: `特写｜${profile.visual.split("、")[0]}`, voiceover: brief.hook, bgm: "环境声先入，第二秒加入轻节拍" },
         { timeRange: "3–10s", shot: `中景｜${profile.visual}`, voiceover: profile.tension, bgm: "节奏随动作逐步抬升" },
         { timeRange: "10–18s", shot: "近景｜关键动作与产品事实同框，字幕只标真实参数", voiceover: profile.action, bgm: "高潮处收紧，保留现场声" },
-        { timeRange: "18–24s", shot: "使用场景收尾，品牌最后出现", voiceover: `${profile.benefit} ${toneLine(tone, "close")}`, bgm: "放慢并留一秒余韵" },
+        { timeRange: "18–24s", shot: "使用场景收尾，品牌最后出现", voiceover: `${profile.benefit} ${voice.close}`, bgm: "放慢并留一秒余韵" },
       ]
     : mode === "seed"
       ? [
-          { timeRange: "0–3s", shot: "先展示真实麻烦或选择场景，不急着露品牌", voiceover: "先别急着推荐，看看它放进真实生活里怎么样。", bgm: "轻快、干净的开场节拍" },
+          { timeRange: "0–3s", shot: "先展示真实麻烦或选择场景，不急着露品牌", voiceover: voice.videoHook, bgm: "轻快、干净的开场节拍" },
           { timeRange: "3–10s", shot: `完整展示一次使用过程：${profile.visual}`, voiceover: profile.experience, bgm: "镜头跟随操作节奏" },
           { timeRange: "10–17s", shot: "参数与体验细节一一对应，字幕标注适用条件", voiceover: profile.fit, bgm: "保持自然现场声" },
           { timeRange: "17–22s", shot: "回到使用者，画面给出边界提示", voiceover: profile.boundary, bgm: "提问前短暂停顿" },
         ]
       : [
-          { timeRange: "0–3s", shot: `品牌名与${enterprise.industry}核心场景同时出现`, voiceover: `同类选择很多，为什么记住${enterprise.name}？`, bgm: "克制、有识别度的节拍" },
+          { timeRange: "0–3s", shot: `品牌名与${enterprise.industry}核心场景同时出现`, voiceover: voice.videoHook, bgm: "克制、有识别度的节拍" },
           { timeRange: "3–11s", shot: `过程镜头｜${profile.visual}`, voiceover: profile.strength, bgm: "随证据出现稳步推进" },
           { timeRange: "11–18s", shot: "产品与消费者场景交替，字幕呈现可核验事实", voiceover: profile.benefit, bgm: "减少音乐，突出旁白" },
           { timeRange: "18–22s", shot: "固定品牌视觉与核心记忆句", voiceover: enterprise.tagline, bgm: "简洁收束" },
@@ -175,28 +245,28 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
       B: makeVersion(base.B.title, base.B.body, [`#${enterprise.name}`, "#选购思路", "#适合自己的才重要"]),
     },
     weibo: {
-      A: makeVersion(`${enterprise.name}｜一个值得说清的细节`, `${toneLead}\n\n${brief.hook}\n\n${statement}\n\n与其先下结论，不如先看这些能被验证的事实。你选择同类产品时，最在意哪一点？`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
-      B: makeVersion(`关于${enterprise.industry}，品牌应该回答什么`, `来源、过程、适用场景和边界，缺一项都很难建立信任。\n\n${profile.action}\n\n${profile.boundary}\n\n${toneClose}`, [`#品牌观察#`, `#消费选择#`, `#${enterprise.name}#`]),
+      A: makeVersion(`${enterprise.name}｜一个值得说清的细节`, `${voice.lead}\n\n${brief.hook}\n\n${statement}\n\n${voice.proofBridge}\n\n${voice.close}`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
+      B: makeVersion(`关于${enterprise.industry}，品牌应该回答什么`, `${voice.boundaryBridge}\n\n${profile.action}\n\n${profile.boundary}\n\n${voice.close}`, [`#品牌观察#`, `#消费选择#`, `#${enterprise.name}#`]),
     },
     douyin: {
-      A: makeVersion(base.A.title, `${toneLead}\n不靠口号，用一组真实镜头讲清${enterprise.name}为什么值得被看见。`, [`#${tag}`, `#${modeTag}`, "#真实记录"], dyA),
-      B: makeVersion(base.B.title, `换一个切口：先给结果，再回到过程和证据，最后说明适合谁。\n${toneClose}`, [`#${enterprise.name}`, "#幕后过程", "#选择有依据"], dyB),
+      A: makeVersion(base.A.title, `${voice.lead}\n${voice.proofBridge}`, [`#${tag}`, `#${modeTag}`, "#真实记录"], dyA),
+      B: makeVersion(base.B.title, `${voice.boundaryBridge}\n${voice.close}`, [`#${enterprise.name}`, "#幕后过程", "#选择有依据"], dyB),
     },
     reddit: {
-      A: makeVersion(`我们在经营${enterprise.name}，想听听大家会怎样判断这类产品`, `先说明身份：我们是${enterprise.name}团队，来自${enterprise.location}。${toneLead}\n\n${profile.action}\n\n我们认为它的价值在于：${profile.benefit}\n\n也有需要说清的边界：${profile.boundary}\n\n如果你第一次接触这类品牌，最希望先看到哪一种证据？`, ["r/smallbusiness", "讨论", "透明经营"]),
-      B: makeVersion(`一个小品牌怎样把专业说清楚，而不是只说“用心”？`, `${profile.strength}\n\n我们正在尝试把过程、标准与限制都公开，而不是只展示最好看的结果。${profile.fit}\n\n${toneClose}`, ["r/Entrepreneur", "问题", "品牌建设"]),
+      A: makeVersion(`我们在经营${enterprise.name}，想听听大家会怎样判断这类产品`, `先说明身份：我们是${enterprise.name}团队，来自${enterprise.location}。\n\n${voice.lead}\n\n${profile.action}\n\n${voice.proofBridge} ${profile.benefit}\n\n${voice.boundaryBridge} ${profile.boundary}\n\n如果你第一次接触这类品牌，最希望先看到哪一种证据？`, ["r/smallbusiness", "讨论", "透明经营"]),
+      B: makeVersion(`一个小品牌怎样把专业说清楚，而不是只说“用心”？`, `${profile.strength}\n\n${voice.proofBridge}\n\n${profile.fit}\n\n${voice.close}`, ["r/Entrepreneur", "问题", "品牌建设"]),
     },
     discord: {
-      A: makeVersion(`📌 ${enterprise.name}社群共创：下一期想看什么？`, `${toneLead}\n\n先给大家一个真实进度：${profile.action}\n\n我们准备继续公开${profile.visual}。\n\n请回复 1「过程幕后」、2「真实使用」、3「标准与证据」。票数最高的内容会在下一次更新。`, ["#community", "#poll", "#behind-the-scenes"]),
-      B: makeVersion(`👀 社群抢先看｜${enterprise.name}`, `${profile.alternateOpening}\n\n本次抢先信息：${profile.experience}\n\n有疑问直接留在线程里。我们会整理成FAQ，并把目前不能确认的内容明确标出来。${toneClose}`, ["#first-look", "#feedback", "#ask-us"]),
+      A: makeVersion(`📌 ${enterprise.name}社群共创：下一期想看什么？`, `${voice.lead}\n\n先给大家一个真实进度：${profile.action}\n\n我们准备继续公开${profile.visual}。\n\n${voice.communityAction}`, ["#community", "#poll", "#behind-the-scenes"]),
+      B: makeVersion(`👀 社群抢先看｜${enterprise.name}`, `${profile.alternateOpening}\n\n本次抢先信息：${profile.experience}\n\n${voice.boundaryBridge} 有疑问直接留在线程里，我们会把目前不能确认的内容明确标出。\n\n${voice.close}`, ["#first-look", "#feedback", "#ask-us"]),
     },
     instagram: {
-      A: makeVersion(base.A.title, `${toneLead}\n\n${profile.opening}\n\n这组画面记录的是${profile.visual}。镜头之外，还有一个选择：${profile.action}\n\n${profile.benefit}\n\n保存这组内容，下一次我们继续讲过程里的另一个细节。`, [`#${tag}`, "#VisualStory", "#MadeWithCare", "#BehindTheScenes"]),
-      B: makeVersion(`从${enterprise.location}到日常`, `${profile.alternateOpening}\n\n不是所有价值都能在第一张图里看见。向后滑，看看来源、过程、使用和边界怎样组成${enterprise.name}。\n\n${toneClose}`, [`#${enterprise.name}`, "#BrandStory", "#DiscoverLocal"]),
+      A: makeVersion(base.A.title, `${voice.lead}\n\n${profile.opening}\n\n这组画面记录的是${profile.visual}。${voice.proofBridge}\n\n${profile.action}\n\n${voice.close}`, [`#${tag}`, "#VisualStory", "#MadeWithCare", "#BehindTheScenes"]),
+      B: makeVersion(`从${enterprise.location}到日常`, `${profile.alternateOpening}\n\n不是所有价值都能在第一张图里看见。向后滑，看看来源、过程、使用和边界怎样组成${enterprise.name}。\n\n${voice.close}`, [`#${enterprise.name}`, "#BrandStory", "#DiscoverLocal"]),
     },
     tiktok: {
-      A: makeVersion(base.A.title, `${toneLead}\nHook：先用画面提出问题。\nProof：展示真实过程与事实。\nClose：给出适配结论，不强迫购买。`, [`#${tag}`, `#${modeTag}`, "#BehindTheScenes"], dyA.map((shot) => ({ ...shot, timeRange: shot.timeRange.replace("秒", "s") }))),
-      B: makeVersion(`22秒看懂${enterprise.name}的一个真实差异`, `从结果倒推过程：为什么这样做、什么事实能证明、它适合谁。\n${toneClose}`, [`#${enterprise.name}`, "#SmallBusinessTok", "#KnowWhatYouBuy"], dyB.map((shot) => ({ ...shot, timeRange: shot.timeRange.replace("秒", "s") }))),
+      A: makeVersion(base.A.title, `${voice.videoHook}\n${voice.proofBridge}\n${voice.close}`, [`#${tag}`, `#${modeTag}`, "#BehindTheScenes"], dyA.map((shot) => ({ ...shot, timeRange: shot.timeRange.replace("秒", "s") }))),
+      B: makeVersion(`22秒看懂${enterprise.name}的一个真实差异`, `${voice.lead}\n${voice.boundaryBridge}\n${voice.close}`, [`#${enterprise.name}`, "#SmallBusinessTok", "#KnowWhatYouBuy"], dyB.map((shot) => ({ ...shot, timeRange: shot.timeRange.replace("秒", "s") }))),
     },
   };
 }
