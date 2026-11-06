@@ -12,6 +12,8 @@ interface BrandProfile {
   boundary: string;
   strength: string;
   visual: string;
+  detailWalkthrough: string;
+  selectionAdvice: string;
   englishPlace: string;
   englishProduct: string;
   englishBenefit: string;
@@ -39,6 +41,8 @@ function profileFor(enterprise: Enterprise, product: string): BrandProfile {
     boundary: "偏爱浓重焙火感或需要大份量囤茶的人，建议先确认滋味与规格是否符合习惯。",
     strength: "安吉产地、海拔800米茶园、清明前采摘、一芽一叶、小批量低温慢焙，构成了云岭春茶清楚而可核验的专业底座。",
     visual: "雾中茶园、指尖芽叶、低温慢焙的手部动作与办公室杯中舒展的茶叶",
+    detailWalkthrough: "一只小罐里其实藏着几道时间：芽叶生长在海拔800米的茶园，采摘赶在清明前，只取一芽一叶；鲜叶分成小批次处理，再经过低温慢焙。最后装进50克独立罐，春茶才从山里的短暂时令，变成可以放进工位抽屉或随手带去见朋友的一份轻巧心意。",
+    selectionAdvice: "挑这类春茶时，可以先确认采摘时间、芽叶规格和制作方式，再看包装是否符合自己的饮用频率。办公室用普通杯具即可，但投茶量、水温和浸泡时间仍会影响入口感受；偏爱浓重焙火或需要长期大量饮用的人，应先确认风味与份量。",
     englishPlace: "Anji, Zhejiang",
     englishProduct: "high-mountain pre-Qingming spring tea, picked as one bud and one leaf and slowly roasted in small batches",
     englishBenefit: "an approachable spring-tea ritual for a desk, a quiet break, or a thoughtful gift",
@@ -54,6 +58,8 @@ function profileFor(enterprise: Enterprise, product: string): BrandProfile {
     boundary: "追求大型娱乐项目、密集景点或纯购物行程的人，可能不适合这条半日体验路线。",
     strength: "本地青年与老匠人共创、工坊体验、老街导览和在地茶点，形成了青石巷文旅区别于普通打卡路线的内容能力。",
     visual: "青石路、匠人手部、材料纹理、游客第一次动手与茶点旁完成的作品",
+    detailWalkthrough: "这条路线的价值不在景点数量，而在顺序：先由老街导览建立背景，再进入工坊接触材料与动作，最后以在地茶点留出交流和休息。周末半日的长度控制了体力和时间门槛，双人票则更贴近朋友或伴侣共同体验的场景。",
+    selectionAdvice: "预约前应确认具体体验项目、零基础是否可参加、作品能否带走、制作与等待时间，以及茶点和导览的实际安排。喜欢慢游和动手的人更容易获得完整体验；如果期待大型娱乐项目、密集景点或纯购物，需要先判断路线是否符合预期。",
     englishPlace: "Jingdezhen, Jiangxi",
     englishProduct: "a half-day heritage experience combining a guided old-street walk, a hands-on workshop, and local tea snacks",
     englishBenefit: "a slower way to understand local craft by taking part rather than simply taking photos",
@@ -69,6 +75,8 @@ function profileFor(enterprise: Enterprise, product: string): BrandProfile {
     boundary: "农产品存在外观、大小和酸甜度的自然差异，具体到货状态、储存和售后应按实际情况说明。",
     strength: "赣南产地、人工分拣、明确单果规格、现摘现发与5斤家庭装，共同构成橙意果园透明、易理解的购买理由。",
     visual: "冬日果园、人工称重分拣、装箱动作、剥开橙皮时的汁水与家庭分享",
+    detailWalkthrough: "赣南产地解决来源问题，约180—230克的单果规格帮助消费者预估大小，人工分拣负责筛选与装箱，现摘现发强调当季链路；5斤家庭装则把份量落到普通家庭可以在合理时间内吃完的范围。",
+    selectionAdvice: "收到后可以先检查果皮、软硬和运输状态，再按成熟度安排食用与通风储存。农产品的外观、大小和酸甜度存在自然差异，购买前还应了解发货时效、坏果售后与储存建议，而不是只看一句“甜”。",
     englishPlace: "Ganzhou, Jiangxi",
     englishProduct: "freshly picked Gannan navel oranges, hand-sorted at roughly 180–230 grams each in a five-jin family box",
     englishBenefit: "a transparent, right-sized way for households to enjoy seasonal fruit directly from the growing region",
@@ -84,6 +92,8 @@ function profileFor(enterprise: Enterprise, product: string): BrandProfile {
     boundary: "具体体验因使用条件和个人偏好而异，应以企业提供的真实资料为准。",
     strength: `${enterprise.name}需要以可核验的产品、流程、团队或服务事实建立专业认知。`,
     visual: "真实环境、制作或服务过程、产品细节与实际使用动作",
+    detailWalkthrough: `产品资料目前能够确认的是：${product}。成稿应继续把材料、规格、步骤、使用条件和消费者利益一一对应，避免只换一组形容词。`,
+    selectionAdvice: "选择建议应根据真实品类补充使用方法、适合人群、场景限制、维护或储存要求；证据不足的功效、排名和评价暂不写入。",
     englishPlace: enterprise.location,
     englishProduct: "a product shaped by real materials, process, and everyday use",
     englishBenefit: "a clearer choice grounded in specific facts rather than broad claims",
@@ -211,6 +221,21 @@ function makeVersion(title: string, body: string, hashtags: string[], storyboard
   return { title, body, hashtags, ...(storyboard ? { storyboard } : {}) };
 }
 
+function xiaohongshuBody(draft: Pick<ContentVersion, "body">, tone: string, mode: TranslationMode, profile: BrandProfile, version: "A" | "B") {
+  const modeTransition = mode === "story"
+    ? "把故事往前再走一步，会发现那些看似安静的参数，其实都参与了人物最后的选择。"
+    : mode === "seed"
+      ? "真正影响使用感受的，往往不是一句笼统评价，而是购买前后那些容易被略过的小条件。"
+      : "如果暂时拿掉品牌介绍里的形容词，产品、过程和标准仍然能把差异讲清楚。";
+  const first = version === "A" ? profile.detailWalkthrough : profile.selectionAdvice;
+  const second = version === "A" ? profile.selectionAdvice : profile.detailWalkthrough;
+
+  if (tone === "专业品鉴") return `${draft.body}\n\n${modeTransition}\n\n${first}\n\n再把判断放回真实使用：${second}\n\n基于现有资料，可以形成有条件的结论，但不应把单次观察扩大成普遍效果。个人习惯、操作方式和环境都会改变最终体验，购买前仍要核对自己最在意的那一项。`;
+  if (tone === "年轻活力") return `${draft.body}\n\n故事还没结束，几个不该被一笔带过的细节继续跟上。${modeTransition}\n\n${first}\n\n然后直接切到日常。${second}\n\n信息到这里才算交代完整：不是只给你一张好看的首图，也不是用一句“值得”替你做决定。你最想把哪一个细节继续放大？`;
+  if (tone === "温暖叙事") return `${draft.body}\n\n故事之外，还可以再靠近一点。${modeTransition}\n\n${first}\n\n这些动作与数字最后都会回到人的生活。${second}\n\n一组图文能留下的，不只是一张好看的照片，也可以是一条从来源、过程走到日常的清楚路径。至于答案，不妨留给每个人自己的需要。`;
+  return `${draft.body}\n\n我再把容易忽略的地方摊开说。${modeTransition}\n\n${first}\n\n买回去以后真正会遇到的，是这些：${second}\n\n如果你也在比较同类产品，可以先收藏这些判断点。还有哪项信息没讲清楚，直接问就好；比起催你做决定，我更愿意把条件说完整。`;
+}
+
 function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile, brief: CreativeBrief): Record<Platform, CopyPair> {
   const base = modeCopies(mode, tone, enterprise, profile, brief);
   const tag = enterprise.industry.replaceAll(" ", "");
@@ -241,8 +266,8 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
 
   return {
     xiaohongshu: {
-      A: makeVersion(base.A.title, base.A.body, [`#${tag}`, `#${modeTag}`, "#真实分享", "#生活灵感"]),
-      B: makeVersion(base.B.title, base.B.body, [`#${enterprise.name}`, "#选购思路", "#适合自己的才重要"]),
+      A: makeVersion(base.A.title, xiaohongshuBody(base.A, tone, mode, profile, "A"), [`#${tag}`, `#${modeTag}`, "#真实分享", "#生活灵感"]),
+      B: makeVersion(base.B.title, xiaohongshuBody(base.B, tone, mode, profile, "B"), [`#${enterprise.name}`, "#选购思路", "#适合自己的才重要"]),
     },
     weibo: {
       A: makeVersion(`${enterprise.name}｜一个值得说清的细节`, `${voice.lead}\n\n${brief.hook}\n\n${statement}\n\n${voice.proofBridge}\n\n${voice.close}`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
