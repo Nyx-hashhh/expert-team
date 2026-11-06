@@ -189,7 +189,7 @@ function friendlyCopies(mode: TranslationMode, enterprise: Enterprise, profile: 
     B: { title: `不聊大词，聊聊${enterprise.name}到底凭什么被选择`, body: `如果把品牌介绍里的形容词都删掉，还剩下什么？\n\n${profile.action}\n\n这些事构成了${enterprise.name}在${enterprise.industry}里的真实位置：${profile.strength}\n\n对消费者而言，它不是遥远的品牌宣言，而是${profile.benefit}\n\n这就是我愿意把它介绍给朋友的理由——具体，而且能被继续验证。` },
   };
   return {
-    A: { title: `我想把${enterprise.name}背后的这件小事讲给你听`, body: `你先跟我到故事开始的地方看看。${profile.opening}\n\n一开始，没有谁想着讲一个多么传奇的故事。大家只是遇到了一个很现实的问题：${profile.tension}\n\n犹豫过，也比较过。最后决定没有被省略——${profile.action}\n\n真正让人放下心来的，是它后来进入日常的样子：${profile.experience}\n\n${profile.benefit}\n\n如果你也在意这些细节，这个故事或许正好能替你多问一步。` },
+    A: { title: `我想把${enterprise.name}背后的这件小事讲给你听`, body: `${profile.opening}\n\n${profile.tension}\n\n人反复比较后作出了选择：${profile.action}\n\n${profile.experience} ${profile.benefit}\n\n${profile.boundary}` },
     B: { title: `不是广告里的高光，是一个普通人会在意的瞬间`, body: `先说一个我很想分享的画面：${profile.alternateOpening}\n\n人真正做选择时，很少只看漂亮的一面。会担心，会反复确认，也会问一句：这件东西到底和我的生活有什么关系？\n\n答案藏在过程里。${profile.action}\n\n也落在结果里。${profile.benefit}\n\n${profile.boundary}\n\n故事讲到这里，不催你下结论。把它留作一次认真选择的参考就好。` },
   };
 }
@@ -201,10 +201,10 @@ function professionalCopies(mode: TranslationMode, enterprise: Enterprise, profi
   };
   if (mode === "brand") return {
     A: { title: `${enterprise.name}的品牌资产，应该如何被验证`, body: `品牌认知需要三个层次：品类定锚、专业能力、消费者利益。\n\n品类：${enterprise.industry}。\n\n专业底座：${profile.strength}\n\n产品与行动：${profile.action}\n\n消费者利益：${profile.benefit}\n\n现阶段可使用以上事实建立认知；没有完整统计口径的销量、好评与排名，不应作为权威结论。` },
-    B: { title: `同类品牌比较时，${enterprise.name}提供了哪些有效信息`, body: `判断品牌是否值得优先选择，不宜从口号开始。\n\n先看其差异是否可说明：${profile.action}\n\n再看能力是否持续：${profile.strength}\n\n最后看这些能力是否转化为真实利益：${profile.benefit}\n\n因此，${enterprise.name}更适合以“可追溯过程与明确场景”建立长期心智，而不是争夺无法核验的泛化标签。` },
+    B: { title: `同类品牌比较时，${enterprise.name}提供了哪些有效信息`, body: `${profile.action}\n\n${profile.strength}\n\n这些能力落到消费者手中，带来的是${profile.benefit}\n\n没有完整统计口径的排名与好评，不写成品牌结论。` },
   };
   return {
-    A: { title: `从一个具体事件看${enterprise.name}的产品逻辑`, body: `观察起点：${profile.opening}\n\n事件的前提是：${profile.tension}\n\n关键选择发生在过程而非宣传阶段。${profile.action}\n\n这项选择随后在实际场景中得到验证：${profile.experience}\n\n由此可以得出条件化结论——${profile.benefit}\n\n${profile.boundary}\n\n故事提供情境，事实负责证明；二者不能互相替代。` },
+    A: { title: `从一个具体事件看${enterprise.name}的产品逻辑`, body: `${profile.opening}\n\n${profile.tension}\n\n${profile.action}\n\n${profile.experience} 这些事实支持的判断是：${profile.benefit}\n\n${profile.boundary}` },
     B: { title: `一次选择、一个验证：拆解${enterprise.name}的故事证据`, body: `观察记录从这个结果开始：${profile.alternateOpening}\n\n如果按叙事因果拆分，起点是现实需求，阻力是${profile.tension}\n\n高潮不是情绪放大，而是这项决定：${profile.action}\n\n结果则落在${profile.experience}\n\n${profile.benefit}\n\n所有判断均应限定在现有素材与使用条件内。` },
   };
 }
@@ -212,10 +212,10 @@ function professionalCopies(mode: TranslationMode, enterprise: Enterprise, profi
 function youthfulCopies(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile): DraftPair {
   if (mode === "seed") return {
     A: { title: `先别冲！${enterprise.name}放进真实场景后是这种画风`, body: `需求出现。开始比较。然后问题来了：好看是一回事，真正用起来顺不顺又是另一回事。\n\n先看它怎么做——${profile.action}\n\n再把它扔进日常——${profile.experience}\n\n关键结果：${profile.benefit}\n\n适配名单：${profile.fit}\n\n边界也不藏：${profile.boundary}\n\n信息给齐。要不要继续了解，你来拍板。` },
-    B: { title: `${enterprise.name}体验闯关：第一关就看真实细节`, body: `体验闯关现在开始。先上场景：${profile.alternateOpening}\n\n第一关，来源和过程能不能讲明白？${profile.action}\n\n第二关，到了真实场景会不会掉链子？${profile.experience}\n\n第三关，究竟适合谁？${profile.fit}\n\n最后一关最重要：${profile.boundary}\n\n不喊“闭眼入”。眼睛睁开，反而更容易选对。` },
+    B: { title: `${enterprise.name}放进真实生活，细节能不能接得住`, body: `${profile.alternateOpening}\n\n${profile.action}\n\n${profile.experience}\n\n${profile.fit} ${profile.boundary}` },
   };
   if (mode === "brand") return {
-    A: { title: `品牌很多，${enterprise.name}凭什么挤进你的记忆区`, body: `先报赛道：${enterprise.industry}。\n\n再亮核心能力：${profile.strength}\n\n不绕弯，直接看行动：${profile.action}\n\n这些最后换来什么？${profile.benefit}\n\n心智位置不是抢麦抢来的。每次都把同一件事做好，名字自然会被记住。` },
+    A: { title: `品牌很多，${enterprise.name}凭什么挤进你的记忆区`, body: `${profile.strength}\n\n${profile.action}\n\n消费者实际得到的是${profile.benefit}\n\n能被反复验证的同一件事，才会慢慢和品牌名字连在一起。` },
     B: { title: `删掉“领先”和“匠心”，${enterprise.name}还剩什么`, body: `这题很直接。\n\n剩下产地、过程、规格、团队和真实场景。${profile.action}\n\n剩下能持续重复的能力。${profile.strength}\n\n也剩下消费者能拿到的明确价值：${profile.benefit}\n\n这才是品牌的有效记忆点。短，清楚，能验证。` },
   };
   return {
@@ -234,7 +234,7 @@ function warmCopies(mode: TranslationMode, enterprise: Enterprise, profile: Bran
     B: { title: `从${enterprise.location}出发，一个品牌怎样住进人的记忆`, body: `${profile.alternateOpening}\n\n人们或许先遇见产品，后来才知道背后是谁、为何这样做。\n\n${profile.strength}\n\n专业并不冰冷。它落在每次选择、每道流程，也落在愿意说明边界的坦诚里。${profile.boundary}\n\n${profile.benefit}\n\n这便是${enterprise.name}希望留下的品牌印象。` },
   };
   return {
-    A: { title: brief.hook, body: `${profile.opening}\n\n故事从这里展开。人物有自己的愿望，现实也有不肯让步的部分：${profile.tension}\n\n时间往前走，犹豫没有被略去。直到一个决定落下来——${profile.action}\n\n这是故事最紧的一刻，也是产品特征真正被看见的一刻。后来，${profile.experience}\n\n${profile.benefit}\n\n日常并没有因此变得宏大，只是多了一份可以被触摸、被记住的认真。` },
+    A: { title: brief.hook, body: `${profile.opening}\n\n${profile.tension}\n\n${profile.action}\n\n${profile.experience} ${profile.benefit}` },
     B: { title: `那一天过去以后，一个细节仍留在日常里`, body: `${profile.alternateOpening}\n\n起初，人只是想解决一件普通的小事。寻找的过程有迟疑，也有不得不面对的困难。${profile.tension}\n\n最后，他们没有绕开那道难题。${profile.action}\n\n事情落定以后，改变很具体：${profile.benefit}\n\n镜头回到开头。光线、声音和人的动作仍旧平常，只是我们已经知道，这个细节为何值得留下。` },
   };
 }
@@ -244,12 +244,6 @@ function modeCopies(mode: TranslationMode, tone: string, enterprise: Enterprise,
   if (tone === "年轻活力") return youthfulCopies(mode, enterprise, profile);
   if (tone === "温暖叙事") return warmCopies(mode, enterprise, profile, brief);
   return friendlyCopies(mode, enterprise, profile, brief);
-}
-
-function shortModeStatement(mode: TranslationMode, enterprise: Enterprise, profile: BrandProfile) {
-  if (mode === "seed") return `${profile.experience} ${profile.fit}`;
-  if (mode === "brand") return `${profile.strength} ${profile.benefit}`;
-  return `${profile.tension} ${profile.action}`;
 }
 
 function makeVersion(title: string, body: string, hashtags: string[], storyboard?: ContentVersion["storyboard"]): ContentVersion {
@@ -271,7 +265,6 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
   });
   const tag = enterprise.industry.replaceAll(" ", "");
   const modeTag = mode === "story" ? "品牌故事" : mode === "seed" ? "真实体验" : "品牌观察";
-  const statement = shortModeStatement(mode, enterprise, profile);
   const voice = voiceFor(tone);
   const dyA = mode === "story"
     ? [
@@ -298,12 +291,12 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
   return {
     xiaohongshu,
     weibo: {
-      A: makeVersion(`${enterprise.name}｜一个值得说清的细节`, `${voice.lead}\n\n${brief.hook}\n\n${statement}\n\n${voice.proofBridge}\n\n${voice.close}`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
-      B: makeVersion(`关于${enterprise.industry}，品牌应该回答什么`, `${voice.boundaryBridge}\n\n${profile.action}\n\n${profile.boundary}\n\n${voice.close}`, [`#品牌观察#`, `#消费选择#`, `#${enterprise.name}#`]),
+      A: makeVersion(base.A.title, `${profile.opening}\n\n${mode === "story" ? `${profile.tension} ${profile.action}` : mode === "seed" ? `${profile.experience} ${profile.fit}` : `${profile.strength} ${profile.benefit}`}\n\n${profile.boundary}`, [`#${enterprise.name}#`, `#${tag}#`, `#${modeTag}#`]),
+      B: makeVersion(base.B.title, `${profile.alternateOpening}\n\n${mode === "story" ? `${profile.action} ${profile.experience}` : mode === "seed" ? `${profile.detailWalkthrough} ${profile.selectionAdvice}` : `${profile.action} ${profile.benefit}`}\n\n${profile.boundary}`, [`#品牌观察#`, `#消费选择#`, `#${enterprise.name}#`]),
     },
     douyin: {
-      A: makeVersion(base.A.title, `${voice.lead}\n${voice.proofBridge}`, [`#${tag}`, `#${modeTag}`, "#真实记录"], dyA),
-      B: makeVersion(base.B.title, `${voice.boundaryBridge}\n${voice.close}`, [`#${enterprise.name}`, "#幕后过程", "#选择有依据"], dyB),
+      A: makeVersion(base.A.title, `${brief.hook}\n${profile.action}\n${profile.benefit}`, [`#${tag}`, `#${modeTag}`, "#真实记录"], dyA),
+      B: makeVersion(base.B.title, `${profile.alternateOpening}\n${profile.experience}\n${profile.boundary}`, [`#${enterprise.name}`, "#幕后过程", "#选择有依据"], dyB),
     },
     reddit: {
       A: makeVersion(`我们在经营${enterprise.name}，想听听大家会怎样判断这类产品`, `先说明身份：我们是${enterprise.name}团队，来自${enterprise.location}。\n\n${voice.lead}\n\n${profile.action}\n\n${voice.proofBridge} ${profile.benefit}\n\n${voice.boundaryBridge} ${profile.boundary}\n\n如果你第一次接触这类品牌，最希望先看到哪一种证据？`, ["r/smallbusiness", "讨论", "透明经营"]),
@@ -326,32 +319,32 @@ function chinesePlatforms(mode: TranslationMode, tone: string, enterprise: Enter
 
 function englishPlatforms(mode: TranslationMode, tone: string, enterprise: Enterprise, profile: BrandProfile): Pick<Record<Platform, CopyPair>, "reddit" | "discord" | "instagram" | "tiktok"> {
   const modeFocus = mode === "story"
-    ? `The story is not a legend. It is a real choice made in the process: ${profile.englishProduct}.`
+    ? `A concrete production choice sits at the center of the story: ${profile.englishProduct}.`
     : mode === "seed"
-      ? `In everyday use, the useful question is whether it fits your routine. It offers ${profile.englishBenefit}.`
-      : `The brand position is specific: ${profile.englishProduct}, supported by a process people can inspect.`;
-  const toneNote = tone === "专业品鉴" ? "We prefer conditions and evidence to sweeping claims." : tone === "年轻活力" ? "Quick look, real process, clear takeaway." : tone === "闺蜜安利" ? "Here is the honest version I would share with a friend." : "Some details speak quietly, but stay with you.";
+      ? `The everyday case for it is ${profile.englishBenefit}.`
+      : `${enterprise.name} is building its name around ${profile.englishProduct}.`;
+  const friendLead = tone === "闺蜜安利" ? "This is the detail I would send to a friend before they bought anything." : tone === "专业品鉴" ? "The claim only becomes useful when its conditions are visible." : tone === "年轻活力" ? "Watch the process closely; the useful bit happens fast." : `The work begins quietly in ${profile.englishPlace}.`;
   return {
     reddit: {
-      A: makeVersion(`We are building ${enterprise.name} in ${profile.englishPlace} — what would you verify first?`, `Disclosure: this is the ${enterprise.name} team. ${toneNote}\n\n${modeFocus}\n\nThe practical value is ${profile.englishBenefit}. We do not want to hide the limits or turn a brand claim into a fact.\n\nWhat evidence would you want before considering a product or experience like this?`, ["r/smallbusiness", "Discussion", "Transparent business"]),
-      B: makeVersion("How can a small brand show expertise without sounding like an ad?", `Our answer is to show the place, process, conditions, and limits behind the offer. ${modeFocus}\n\nWhat makes you trust an unfamiliar independent brand: a standard, a demonstration, customer context, or something else?`, ["r/Entrepreneur", "Question", "Brand building"]),
+      A: makeVersion(`We run ${enterprise.name} in ${profile.englishPlace}. What would you want us to document?`, `Disclosure: this is the brand team. ${modeFocus}\n\nFor customers, that translates to ${profile.englishBenefit}. We can document the source and process; we will not turn an unverified ranking or a personal impression into a general claim.\n\nIf you were evaluating this category, which part would you scrutinize first?`, ["r/smallbusiness", "Discussion", "Transparent business"]),
+      B: makeVersion(`What useful proof can a small ${enterprise.industry} brand publish?`, `${friendLead}\n\n${modeFocus} Place, process, use conditions, and limitations give people something concrete to question. Awards and adjectives do not fill the same role.\n\nWhich format would help more: a process log, a use-case demonstration, or a specification sheet?`, ["r/Entrepreneur", "Question", "Brand building"]),
     },
     discord: {
-      A: makeVersion(`📌 ${enterprise.name} community vote`, `${toneNote}\n\nWe are preparing a closer look at ${profile.englishProduct}.\n\nReply 1 for the process, 2 for real-life use, or 3 for evidence and standards. We will build the next update around the top choice.`, ["#community", "#poll", "#behind-the-scenes"]),
-      B: makeVersion(`👀 First look: ${enterprise.name}`, `${modeFocus}\n\nAsk us anything in the thread. We will turn the questions into a public FAQ and clearly mark what still needs verification.`, ["#first-look", "#feedback", "#ask-us"]),
+      A: makeVersion(`📌 Choose the next ${enterprise.name} field note`, `We are filming ${profile.englishProduct}.\n\nReact with 🛠️ for the making process, 🏠 for everyday use, or 🔎 for specifications and evidence. The most-picked angle becomes the next update.`, ["#community", "#poll", "#behind-the-scenes"]),
+      B: makeVersion(`👀 A working detail from ${profile.englishPlace}`, `${friendLead}\n\n${modeFocus}\n\nDrop a question in the thread. We will answer with what can be documented and mark anything that still needs checking.`, ["#first-look", "#feedback", "#ask-us"]),
     },
     instagram: {
-      A: makeVersion(`A closer look at ${enterprise.name}`, `${toneNote}\n\nThis visual story begins in ${profile.englishPlace}. ${modeFocus}\n\nThe detail that matters in daily life: ${profile.englishBenefit}.\n\nSave this post for the next chapter in the process.`, ["#BrandStory", "#MadeWithCare", "#BehindTheScenes", "#SmallBusiness"]),
-      B: makeVersion("From place and process to everyday use", `There is more behind the first frame. Swipe through the source, the hands, the process, and the real-life context behind ${enterprise.name}.\n\nWhich detail would you like us to explain next?`, ["#VisualStory", "#DiscoverLocal", "#IndependentBrand"]),
+      A: makeVersion(`Made in ${profile.englishPlace}, meant for a real routine`, `${friendLead}\n\n${modeFocus}\n\nThe carousel follows the work from its source to the moment it becomes ${profile.englishBenefit}.`, ["#BrandStory", "#MadeWithCare", "#BehindTheScenes", "#SmallBusiness"]),
+      B: makeVersion(`The hands and decisions behind ${enterprise.name}`, `Frame one shows the finished moment. The next frames trace ${profile.englishProduct}—where it begins, which decisions shape it, and where it fits in daily life.`, ["#VisualStory", "#DiscoverLocal", "#IndependentBrand"]),
     },
     tiktok: {
-      A: makeVersion(`The detail behind ${enterprise.name}`, `Hook: one visual question.\nProof: the process in action.\nClose: who it fits and why.`, ["#SmallBusinessTok", "#BehindTheScenes", "#KnowWhatYouBuy"], [
+      A: makeVersion(`One decision changes the whole ${enterprise.name} process`, `${friendLead} ${modeFocus}`, ["#SmallBusinessTok", "#BehindTheScenes", "#KnowWhatYouBuy"], [
         { timeRange: "0–2s", shot: `Open on a tactile detail from ${profile.englishPlace}`, voiceover: "Before the brand name, look at this detail.", bgm: "Natural sound, then a clean beat" },
         { timeRange: "2–9s", shot: "Show the hands, setting, and process without decorative filler", voiceover: modeFocus, bgm: "Cuts follow the real action" },
         { timeRange: "9–16s", shot: "Move into a clear everyday-use context", voiceover: profile.englishBenefit, bgm: "Lower the music under the key fact" },
         { timeRange: "16–20s", shot: "Brand lockup and a specific comment prompt", voiceover: "What would you want us to verify next?", bgm: "Brief pause before the question" },
       ]),
-      B: makeVersion(`Why ${enterprise.name} makes this choice`, `Start with the result, rewind to the process, and finish with the limits — not a sales slogan.`, ["#MeetTheMaker", "#BrandProcess", "#ShopSmall"], [
+      B: makeVersion(`Watch this result travel back to its source`, `${profile.englishBenefit} The video shows the decision that makes that possible.`, ["#MeetTheMaker", "#BrandProcess", "#ShopSmall"], [
         { timeRange: "0–2s", shot: "Show the finished moment first", voiceover: "The result makes more sense when you see what came before it.", bgm: "Fast opening, immediate pause" },
         { timeRange: "2–10s", shot: "Rewind through place, material, and process", voiceover: `This begins in ${profile.englishPlace}.`, bgm: "Reverse transition into organic rhythm" },
         { timeRange: "10–18s", shot: "Pair one claim with one visible proof", voiceover: modeFocus, bgm: "Steady build" },
