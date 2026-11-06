@@ -340,10 +340,9 @@ export function buildFallback(request: GenerateRequest, enterprise: Enterprise):
   const brief = request.creativeBrief ?? buildCreativeBrief({ contractVersion: 1, enterpriseId: request.enterpriseId, selectedMaterials: request.selectedMaterials, goal, tone: request.tone, mode }, enterprise);
   const profile = profileFor(enterprise, product);
   const chinese = chinesePlatforms(mode, request.tone, enterprise, profile, brief);
-  const foreignUsesChinese = /中文|汉语/.test(goal) || (!/英文|英语|\benglish\b/i.test(goal) && /[\u3400-\u9fff]/.test(goal));
-  const english = foreignUsesChinese ? null : englishPlatforms(mode, request.tone, enterprise, profile);
+  const english = englishPlatforms(mode, request.tone, enterprise, profile);
   const platforms = Object.fromEntries(request.platforms.map((platform) => {
-    if (english && (platform === "reddit" || platform === "discord" || platform === "instagram" || platform === "tiktok")) return [platform, english[platform]];
+    if (platform === "reddit" || platform === "discord" || platform === "instagram" || platform === "tiktok") return [platform, english[platform]];
     return [platform, chinese[platform]];
   })) as Partial<Record<Platform, PlatformVersions>>;
   return { contractVersion: 1, enterpriseId: enterprise.id, source: "fallback", platforms };
