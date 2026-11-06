@@ -165,18 +165,30 @@
 .zoneField>span small{margin-left:5px;color:#9aac9d;font-weight:400}
 .zoneTrigger{display:flex;align-items:center;gap:7px;width:100%;min-height:37px;padding:0 10px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#4b7756;text-align:left;cursor:pointer}
 .zoneTrigger strong{flex:1;font-size:11px}
-.zoneTrigger em{padding:3px 6px;border-radius:10px;background:#e8f3e7;color:#5a8b62;font-size:9px;font-style:normal}
 .zoneTrigger:hover,.zoneTrigger[aria-expanded="true"]{border-color:#8eb99a;background:#fcfefb}
-.zonePopover{position:absolute;right:0;bottom:100%;z-index:30;width:min(320px,calc(100vw - 42px));max-height:min(480px,calc(100vh - 130px));overflow-y:auto;padding:13px;border:1px solid #d8e7da;border-radius:12px;background:#fff;box-shadow:0 16px 38px #284a2d30;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.zonePopover{position:absolute;right:0;bottom:100%;z-index:30;display:flex;flex-direction:column;width:min(320px,calc(100vw - 42px));max-height:min(420px,calc(100vh - 145px));overflow:hidden;padding:14px;border:1px solid #d8e7da;border-radius:12px;background:#fff;box-shadow:0 16px 38px #284a2d30}
 .zonePopoverHead{display:flex;align-items:center;justify-content:space-between;color:#3e6749;font-size:12px}
 .zonePopoverHead small{color:#9bac9e;font-size:9px;font-weight:400}
+.zoneCurrent{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding:10px 11px;border:1px solid #dceadc;border-radius:9px;background:#f5faf4}
+.zoneCurrent>div{display:grid;gap:2px;min-width:0}
+.zoneCurrent span:first-child{color:#8da591;font-size:9px}
+.zoneCurrent strong{color:#3e754b;font-size:12px}
+.zoneCurrent small{color:#91a394;font-size:9px;font-weight:400}
+.zoneCurrent button,.zoneDefaultBadge{flex:none;border:0;border-radius:15px;padding:6px 9px;background:#e5f0e4;color:#4f855b;font-size:9px;font-weight:700;white-space:nowrap}
+.zoneCurrent button{cursor:pointer}
+.zoneCurrent button:hover{background:#d6e9d4}
+.zoneDefaultBadge{display:flex;align-items:center;gap:3px}
 .zoneSearch{display:flex;align-items:center;gap:7px;height:32px;margin-top:11px;padding:0 9px;border:1px solid #e0e9e0;border-radius:7px;background:#f8fbf7;color:#8da992}
 .zoneSearch:focus-within{border-color:#8eb99a}
 .zoneSearch input{width:100%;border:0;outline:0;background:transparent;color:#3d6047;font-size:10px}
-.zoneSectionTitle{display:flex;justify-content:space-between;margin:12px 0 5px;color:#819b84;font-size:9px;font-weight:800;letter-spacing:.4px}
+.zoneContent{min-height:0;margin-top:8px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.zoneSectionTitle{display:flex;justify-content:space-between;margin:7px 0 6px;color:#819b84;font-size:9px;font-weight:800;letter-spacing:.4px}
 .zoneSectionTitle small{font-size:9px;font-weight:400;letter-spacing:0}
-.zoneList{display:grid;gap:3px}
-.zoneAllList{max-height:162px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#b6cfba #f4f8f3}
+.zoneSectionButton{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:33px;margin-top:3px;padding:0 6px;border:0;border-top:1px solid #edf2ed;background:#fff;color:#66856d;font-size:10px;font-weight:700;text-align:left;cursor:pointer}
+.zoneSectionButton small{margin-left:7px;color:#9bac9e;font-size:9px;font-weight:400}
+.zoneSectionButton svg{color:#8fa993;transition:transform .18s}
+.zoneSectionButton[aria-expanded="true"] svg{transform:rotate(180deg)}
+.zoneList{display:grid;gap:3px;padding-bottom:7px}
 .zoneLetter{padding:6px 4px 3px;color:#8cad91;font-size:9px;font-weight:800;letter-spacing:1px}
 .zoneRow{display:flex;align-items:center;gap:3px;min-height:40px;border:1px solid transparent;border-radius:7px;background:#fafcf9}
 .zoneRow:hover{border-color:#dceadc;background:#f6faf5}
@@ -187,12 +199,12 @@
 .zoneChoice small{margin-top:3px;color:#99a89b;font-size:9px;font-weight:400}
 .zoneChoice svg{flex:none;color:#5c9468}
 .zoneChoice[aria-pressed="true"] strong{color:#3f8050}
-.zoneStar,.zoneDefault{flex:none;border:0;background:transparent;cursor:pointer}
-.zoneStar{display:grid;place-items:center;width:26px;height:28px;color:#a9b9aa}
+.zoneStar{display:grid;place-items:center;flex:none;width:26px;height:28px;border:0;background:transparent;color:#a9b9aa;opacity:0;cursor:pointer}
 .zoneStarOn{color:#d5a95e}
+.zoneRow:hover .zoneStar,.zoneRow:focus-within .zoneStar,.zoneChoice[aria-pressed="true"]+.zoneStar{opacity:1}
+.zoneStar:focus-visible{opacity:1}
 .zoneStar:disabled{cursor:default}
-.zoneDefault{margin-right:5px;padding:4px 6px;border-radius:5px;background:#eaf4e9;color:#5a8b62;font-size:9px}
-.zoneDefault:disabled{background:transparent;color:#7ca785;cursor:default}
+@media(hover:none){.zoneStar{opacity:1}}
 .zoneEmpty{margin:10px 3px;color:#9bac9e;font-size:10px}
 .zoneTrigger:focus-visible,.zonePopover button:focus-visible,.zoneSearch input:focus-visible{outline:2px solid #77a984;outline-offset:2px}
 .schedulePanel .scheduleError{margin:9px 0 0;color:#b25046;font-size:10px}
