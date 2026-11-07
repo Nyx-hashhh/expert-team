@@ -91,6 +91,7 @@ export interface ScheduleItem {
   version: Version;
   content: ContentVersion;
   scheduledAt: string;
+  timeZone?: string;
   status: ScheduleStatus;
 }
 
