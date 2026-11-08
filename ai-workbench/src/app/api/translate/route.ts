@@ -35,8 +35,10 @@ export async function POST(request: Request) {
   const client = new OpenAI({
     apiKey,
     baseURL: process.env.TRANSLATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    timeout: 30000,
-    maxRetries: 2,
+    // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
+    // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
+    timeout: 16000,
+    maxRetries: 1,
   });
   try {
     const completion = await client.chat.completions.create({
