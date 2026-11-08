@@ -76,7 +76,7 @@ export function Workbench() {
     const selectedMaterials = materials.filter((item) => selectedIds.includes(item.id));
     const translateRequest: TranslateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterials, goal: goal.trim(), tone, mode: translationMode };
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5500);
+    const timeout = setTimeout(() => controller.abort(), 50000);
     try {
       const response = await fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(translateRequest), signal: controller.signal });
       if (!response.ok) {
@@ -147,7 +147,7 @@ export function Workbench() {
     const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterialIds: selectedIds, selectedMaterials: materials.filter((item) => selectedIds.includes(item.id)), goal: goal.trim(), platforms, tone, translationMode, creativeBrief: brief };
     setNotice("正在按文案思路准备各平台 A/B 内容…");
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 100000);
     try {
       const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal: controller.signal });
       if (!response.ok) {

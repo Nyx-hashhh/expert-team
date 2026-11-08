@@ -19,9 +19,10 @@ const briefSchema = z.object({
   coreMessage: z.string().min(1),
   storyAngle: z.string().min(1),
   hook: z.string().min(1),
-  storyArc: z.array(z.string().min(1)).min(3).max(6),
-  humanTouch: z.array(z.string().min(1)).min(2).max(6),
-  avoid: z.array(z.string().min(1)).min(2).max(8),
+  // 3-6/2-6/2-8 只是提示词中的风格建议，校验放宽到非空数组，避免模型多写一两项就整体失败
+  storyArc: z.array(z.string().min(1)).min(1).max(12),
+  humanTouch: z.array(z.string().min(1)).min(1).max(12),
+  avoid: z.array(z.string().min(1)).min(1).max(12),
 });
 
 export async function POST(request: Request) {
@@ -38,13 +39,14 @@ export async function POST(request: Request) {
   const client = new OpenAI({
     apiKey,
     baseURL: process.env.TRANSLATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    timeout: 5000,
-    maxRetries: 0,
+    timeout: 30000,
+    maxRetries: 2,
   });
   try {
     const completion = await client.chat.completions.create({
       model: process.env.TRANSLATE_LLM_MODEL || process.env.LLM_MODEL || "deepseek-chat",
       response_format: { type: "json_object" },
+      reasoning_effort: "low",
       messages: [
         { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook、storyArc（3-6项）、humanTouch（2-6项）、avoid（2-8项）。humanTouch 必须填写“为完成当前创意，建议用户继续补充或核实的事实与证据”，并针对企业、品类、诉求和所选素材指出具体缺口，不得填写泛泛的写作建议。` },
         { role: "user", content: JSON.stringify({ enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials }) },
@@ -53,8 +55,22 @@ export async function POST(request: Request) {
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return Response.json({ error: "模型未返回内容，请重试" }, { status: 502 });
     let brief: TranslateResult["brief"];
-    try { brief = briefSchema.parse(JSON.parse(raw)); }
-    catch { return Response.json({ error: "模型返回内容不符合约定格式，请重试" }, { status: 502 }); }
+    try {
+      let json: unknown;
+      try { json = JSON.parse(raw); }
+      catch {
+        // 模型偶发在 JSON 外包一层 markdown 代码块，截取花括号内容兜底
+        const start = raw.indexOf("{");
+        const end = raw.lastIndexOf("}");
+        if (start < 0 || end <= start) throw new Error("invalid json");
+        json = JSON.parse(raw.slice(start, end + 1));
+      }
+      brief = briefSchema.parse(json);
+    }
+    catch (error) {
+      console.error("[translate] 模型返回内容解析失败：", error, "finish_reason=", completion.choices[0]?.finish_reason, "usage=", JSON.stringify(completion.usage), "raw头300字=", raw.slice(0, 300), "raw尾200字=", raw.slice(-200));
+      return Response.json({ error: "模型返回内容不符合约定格式，请重试" }, { status: 502 });
+    }
     return Response.json({ contractVersion: CONTRACT_VERSION, source: "ai", brief } satisfies TranslateResult);
   } catch (error) {
     console.error("[translate] 上游 API 调用失败：", error);
