@@ -45,9 +45,6 @@ export interface CreativeBrief {
   coreMessage: string;
   storyAngle: string;
   hook: string;
-  storyArc: string[];
-  humanTouch: string[];
-  avoid: string[];
 }
 
 export interface TranslateRequest {

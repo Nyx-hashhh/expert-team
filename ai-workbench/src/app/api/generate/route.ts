@@ -7,7 +7,6 @@ import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult, type
 
 const creativeBriefSchema = z.object({
   mode: z.enum(["story", "seed", "brand"]), audience: z.string(), coreMessage: z.string(), storyAngle: z.string(), hook: z.string(),
-  storyArc: z.array(z.string()), humanTouch: z.array(z.string()), avoid: z.array(z.string()),
 });
 
 const requestSchema = z.object({

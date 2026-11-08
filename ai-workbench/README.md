@@ -44,7 +44,7 @@ GENERATE_LLM_MODEL=生成使用的模型名
 }
 ```
 
-`mode` 支持 `story`（故事型）、`seed`（种草型）、`brand`（品牌型）。响应的 `brief` 包含 `audience`、`coreMessage`、`storyAngle`、`hook`、`storyArc`、`humanTouch` 和 `avoid`。前端会把这份简报随生成请求传给 `/api/generate`，避免直接复述客户原话和模板化表达。
+`mode` 支持 `story`（故事型）、`seed`（种草型）、`brand`（品牌型）。响应的 `brief` 包含 `audience`、`coreMessage`、`storyAngle`、`hook` 四项核心思路。前端会把这份简报随生成请求传给 `/api/generate`，避免直接复述客户原话和模板化表达。
 
 ## 三人协作边界
 

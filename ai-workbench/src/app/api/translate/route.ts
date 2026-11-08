@@ -19,10 +19,6 @@ const briefSchema = z.object({
   coreMessage: z.string().min(1),
   storyAngle: z.string().min(1),
   hook: z.string().min(1),
-  // 3-6/2-6/2-8 只是提示词中的风格建议，校验放宽到非空数组，避免模型多写一两项就整体失败
-  storyArc: z.array(z.string().min(1)).min(1).max(12),
-  humanTouch: z.array(z.string().min(1)).min(1).max(12),
-  avoid: z.array(z.string().min(1)).min(1).max(12),
 });
 
 export async function POST(request: Request) {
@@ -48,7 +44,7 @@ export async function POST(request: Request) {
       response_format: { type: "json_object" },
       reasoning_effort: "low",
       messages: [
-        { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook、storyArc（3-6项）、humanTouch（2-6项）、avoid（2-8项）。humanTouch 必须填写“为完成当前创意，建议用户继续补充或核实的事实与证据”，并针对企业、品类、诉求和所选素材指出具体缺口，不得填写泛泛的写作建议。` },
+        { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。每项都用一句具体、可执行的中文表述，不写解释或多余字段。` },
         { role: "user", content: JSON.stringify({ enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials }) },
       ],
     });
