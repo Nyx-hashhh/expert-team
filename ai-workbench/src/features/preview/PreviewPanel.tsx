@@ -1,10 +1,11 @@
 "use client";
 
-import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Music2, Pause, Play, Repeat2, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
+import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Minus, Music2, Pause, Play, Plus, Repeat2, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
 import { readLocal, writeLocal } from "@/lib/storage";
+import { ensureMockFontScaleStyle } from "./mock-font-scale";
 import { DEFAULT_TIME_ZONE, INITIAL_FAVORITE_TIME_ZONES, RECOMMENDED_TIME_ZONES, SCHEDULE_TIME_ZONES, findScheduleTimeZone, scheduleDateToUtc, type ScheduleTimeZone } from "@/lib/schedule-timezones";
 import springTeaHero from "./hero-spring-tea.png";
 import heritageTownHero from "./hero-heritage-town.png";
@@ -82,6 +83,15 @@ function previewLocation(enterprise: Enterprise, language: PreviewLanguage): str
 
 const previewCss = new Proxy(styles, { get: (target, key) => Reflect.get(target, key) || String(key) });
 
+const FONT_SCALE_KEY = "preview-font-scale";
+const FONT_SCALE_MIN = 80;
+const FONT_SCALE_MAX = 140;
+const FONT_SCALE_STEP = 10;
+
+function clampFontScale(value: number): number {
+  return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, value));
+}
+
 function DemoHero({ enterprise, creditClassName = "", language = "zh" }: { enterprise: Enterprise; creditClassName?: string; language?: PreviewLanguage }) {
   const hero = DEMO_HEROES[enterprise.id];
   if (!hero) return null;
@@ -105,7 +115,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const [expandedZoneSection, setExpandedZoneSection] = useState<"favorites" | "recommended" | "all" | null>("favorites");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(2000, 0, 1));
   const [isExporting, setIsExporting] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(0);
+  const [fontScale, setFontScale] = useState(100);
   const [slide, setSlide] = useState(0);
   const [liked, setLiked] = useState(false);
   const [collected, setCollected] = useState(false);
@@ -128,14 +138,6 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - calendarOffset + 1);
     return { date, value: dateValue(date), inMonth: date.getMonth() === calendarMonth.getMonth() };
   });
-
-  useEffect(() => {
-    if (!content || result?.source !== "fallback") return;
-    const reset = setTimeout(() => setVisibleCount(0), 0);
-    const timer = setInterval(() => setVisibleCount((value) => Math.min(value + 6, content.body.length)), 16);
-    return () => { clearTimeout(reset); clearInterval(timer); };
-  }, [content, result?.source]);
-  const shownContent = content && result?.source === "fallback" ? { ...content, body: content.body.slice(0, visibleCount), hashtags: visibleCount >= content.body.length ? content.hashtags : [] } : content;
 
   const metrics = useMemo(() => {
     const seed = hashCode(`${enterprise.id}|${activePlatform}|${activeVersion}`);
@@ -170,6 +172,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     else if (selectedBounds.right > listBounds.right) list.scrollBy({ left: selectedBounds.right - listBounds.right, behavior: "smooth" });
   }, [activePlatform]);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 2200); return () => clearTimeout(timer); }, [notice]);
+  useEffect(() => {
+    ensureMockFontScaleStyle();
+    const saved = readLocal<number>(FONT_SCALE_KEY, 100);
+    if (typeof saved === "number" && Number.isFinite(saved)) setFontScale(clampFontScale(Math.round(saved)));
+  }, []);
+  useEffect(() => {
+    document.body.style.setProperty("zoom", fontScale === 100 ? "" : String(fontScale / 100));
+  }, [fontScale]);
   useEffect(() => { if (!scheduleSuccess) return; const timer = setTimeout(() => setScheduleSuccess(false), 1600); return () => clearTimeout(timer); }, [scheduleSuccess]);
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -192,6 +202,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     setLiked(true);
     setExtraLikes((value) => value + 1);
     setBurstKey((key) => key + 1);
+  }
+
+  function adjustFontScale(delta: number) {
+    setFontScale((value) => {
+      const next = clampFontScale(value + delta);
+      writeLocal(FONT_SCALE_KEY, next);
+      return next;
+    });
   }
 
   const interaction = {
@@ -274,6 +292,9 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     if (!target || !content || isExporting) return;
     const filename = `${enterprise.name}-${PLATFORM_LABELS[activePlatform]}-${activeVersion}.png`.replace(/[<>:"/\\|?*]/g, "_");
     setIsExporting(true);
+    // 字体缩放会干扰截图坐标，导出期间临时还原为 100%。
+    const savedZoom = document.body.style.getPropertyValue("zoom");
+    document.body.style.setProperty("zoom", "");
     try {
       // The picker must open during the click gesture, before rendering the image.
       let fileHandle: FileSystemFileHandle | null = null;
@@ -339,6 +360,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       console.error("Preview image export failed", error);
       setNotice("导出失败，请重试");
     } finally {
+      document.body.style.setProperty("zoom", savedZoom);
       setIsExporting(false);
     }
   }
@@ -352,8 +374,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     document.body.classList.add("resizing-preview");
 
     function resize(moveEvent: PointerEvent) {
-      const maxWidth = Math.min(720, window.innerWidth - 244 - 480);
-      onPreviewWidthChange(Math.min(maxWidth, startWidth + startX - moveEvent.clientX));
+      onPreviewWidthChange(startWidth + startX - moveEvent.clientX);
     }
 
     function stopResize() {
@@ -379,7 +400,14 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       <div className="preview-resizer" role="separator" aria-label="调节拟真预览宽度" aria-orientation="vertical" aria-valuemin={320} aria-valuemax={720} aria-valuenow={previewWidth} tabIndex={0} onPointerDown={startResize} onKeyDown={resizeWithKeyboard}><span /><small>拖动调节预览宽度</small></div>
       <div className="preview-header">
         <div><span className="eyebrow">LIVE PREVIEW</span><h2>多端拟真预览</h2></div>
-        <span className="live-pill"><span /> 实时同步</span>
+        <div className={previewCss.headerTools}>
+          <span className="live-pill"><span /> 实时同步</span>
+          <div className={previewCss.fontScale} role="group" aria-label="调整页面字体大小">
+            <button type="button" onClick={() => adjustFontScale(-FONT_SCALE_STEP)} disabled={fontScale <= FONT_SCALE_MIN} aria-label="减小字体" title="减小字体"><Minus size={12} /></button>
+            <span title="当前字体大小">Aa {fontScale}%</span>
+            <button type="button" onClick={() => adjustFontScale(FONT_SCALE_STEP)} disabled={fontScale >= FONT_SCALE_MAX} aria-label="增大字体" title="增大字体"><Plus size={12} /></button>
+          </div>
+        </div>
       </div>
       <div className={previewCss.platformTabStrip}>
         <button type="button" className={previewCss.platformTabArrow} aria-label="向左查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: -180, behavior: "smooth" })}><ChevronLeft size={15} /></button>
@@ -391,8 +419,8 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <button type="button" className={previewCss.platformTabArrow} aria-label="向右查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight size={15} /></button>
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => { setScheduleOpen(false); onVersionChange(version); }} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
-      <div className="preview-scroll" ref={captureRef}>
-        {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={shownContent} enterprise={enterprise} interaction={interaction} />}
+      <div className={`preview-scroll ${previewCss.mockType}`} ref={captureRef}>
+        {!content ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={content} enterprise={enterprise} interaction={interaction} />}
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>

@@ -45,9 +45,6 @@ export interface CreativeBrief {
   coreMessage: string;
   storyAngle: string;
   hook: string;
-  storyArc: string[];
-  humanTouch: string[];
-  avoid: string[];
 }
 
 export interface TranslateRequest {
@@ -61,7 +58,7 @@ export interface TranslateRequest {
 
 export interface TranslateResult {
   contractVersion: typeof CONTRACT_VERSION;
-  source: "ai" | "local";
+  source: "ai";
   brief: CreativeBrief;
 }
 
@@ -80,7 +77,7 @@ export interface GenerateRequest {
 export interface GenerateResult {
   contractVersion: typeof CONTRACT_VERSION;
   enterpriseId: string;
-  source: "ai" | "fallback";
+  source: "ai";
   platforms: Partial<Record<Platform, PlatformVersions>>;
 }
 

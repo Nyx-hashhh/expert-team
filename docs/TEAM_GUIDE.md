@@ -4,7 +4,7 @@
 
 ## 为什么这样设计
 
-企业已有的产品资料和品牌故事先进入知识库，创作时只引用本次勾选的素材。主控台将同一诉求转换为统一的 JSON 请求，生成接口返回每个平台的 A/B 版本。预览区只读取约定的数据结构，避免把平台展示规则写进生成接口。排期和试用额度保存在当前浏览器，预设案例与模拟指标放在项目 JSON 文件中，因此本地启动不需要数据库、Docker 或社媒平台授权。未配置模型密钥时，工作台使用本地兜底内容完成演示。
+企业已有的产品资料和品牌故事先进入知识库，创作时只引用本次勾选的素材。主控台将同一诉求转换为统一的 JSON 请求，生成接口返回每个平台的 A/B 版本。预览区只读取约定的数据结构，避免把平台展示规则写进生成接口。排期和试用额度保存在当前浏览器，预设案例与模拟指标放在项目 JSON 文件中，因此本地启动不需要数据库、Docker 或社媒平台授权。创作流程只走模型 API：未配置密钥或调用失败时，工作台会返回明确的错误提示，不再加载本地兜底内容。
 
 ## 找到自己的工作区域
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 主程 A | `ai-workbench/src/contracts/`、`src/features/studio/`、`src/app/api/`、`src/components/ui/`、`package.json` | 统一数据契约、创作主控台、模型接口、全局依赖与页面装配 |
 | 队友 B | `ai-workbench/src/features/preview/` | 小红书、微博、抖音预览，平台和版本切换，复制、导图、推送日历按钮 |
-| 队友 C（huihui1753） | `ai-workbench/src/data/`、`src/features/analytics/`、`src/app/analytics/` | 企业案例与兜底内容、演示指标、传播图表 |
+| 队友 C（huihui1753） | `ai-workbench/src/data/`、`src/features/analytics/`、`src/app/analytics/` | 企业案例、演示指标、传播图表 |
 | 主程 A | `ai-workbench/src/features/calendar/`、`src/app/calendar/`、`src/app/page.tsx`、`src/app/layout.tsx` | 排期状态和各模块在页面中的连接 |
 
 表格中的 `src/` 均指 `ai-workbench/src/`。共享契约在 `ai-workbench/src/contracts/content.ts`，当前版本为 `contractVersion: 1`。生成请求会带上企业、所选素材、推广目标、平台和语调；返回结果按平台包含 A/B 两版。需要新增字段时，请先与主程约定字段名和含义，再由主程更新契约，随后各分区使用新字段。
@@ -31,7 +31,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开 `http://localhost:3000`。如果不准备联调真实模型，直接使用本地兜底内容即可。需要联调时，在自己电脑的 `ai-workbench/.env.local` 中填写 `LLM_API_KEY`、`LLM_BASE_URL` 和 `LLM_MODEL`；这个文件不会上传到仓库。
+浏览器打开 `http://localhost:3000`。创作功能必须配置模型 API 才能生成内容：在自己电脑的 `ai-workbench/.env.local` 中填写 `TRANSLATE_LLM_API_KEY`、`TRANSLATE_LLM_BASE_URL`、`TRANSLATE_LLM_MODEL` 和 `GENERATE_LLM_API_KEY`、`GENERATE_LLM_BASE_URL`、`GENERATE_LLM_MODEL`（配置说明见 `ai-workbench/README.md`）；这个文件不会上传到仓库。
 
 ## 更新和上传自己的工作
 
