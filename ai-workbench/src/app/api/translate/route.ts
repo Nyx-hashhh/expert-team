@@ -1,8 +1,8 @@
-import OpenAI from "openai";
 import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, type Enterprise, type TranslateRequest, type TranslateResult } from "@/contracts/content";
+import { createLlmClient } from "@/lib/llm-client";
 
 const materialSchema = z.object({ id: z.string(), type: z.enum(["product", "story", "reference"]), title: z.string().max(200), content: z.string().max(5000) });
 const requestSchema = z.object({
@@ -32,14 +32,9 @@ export async function POST(request: Request) {
   const apiKey = process.env.TRANSLATE_LLM_API_KEY || process.env.LLM_API_KEY;
   if (!apiKey) return Response.json({ error: "未配置智能转译 API：请在 .env.local 中设置 TRANSLATE_LLM_API_KEY" }, { status: 503 });
 
-  const client = new OpenAI({
-    apiKey,
-    baseURL: process.env.TRANSLATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
-    // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
-    timeout: 16000,
-    maxRetries: 1,
-  });
+  // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
+  // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
+  const client = createLlmClient({ apiKey, baseURL: process.env.TRANSLATE_LLM_BASE_URL || process.env.LLM_BASE_URL, timeoutMs: 16000, maxRetries: 1 });
   try {
     const completion = await client.chat.completions.create({
       model: process.env.TRANSLATE_LLM_MODEL || process.env.LLM_MODEL || "deepseek-chat",
