@@ -212,3 +212,12 @@
 .scheduleConfirm:hover{background:#396c48}
 .scheduleToast{position:absolute;right:22px;bottom:74px;z-index:8;display:flex;align-items:center;gap:8px;padding:11px 15px;border:1px solid #c8e3cc;border-radius:9px;background:#f1faf1;color:#3e7a4d;box-shadow:0 10px 30px #233d2930;font-size:12px;font-weight:700;animation:scheduleToastIn .18s ease-out}
 @keyframes scheduleToastIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* 页面字体缩放控件：+/- 调节整页字体，选择本地记忆 */
+.headerTools{display:flex;align-items:center;gap:8px}
+.fontScale{display:flex;align-items:center;gap:1px;border:1px solid #dfe8df;border-radius:15px;background:#fff;padding:2px 3px}
+.fontScale button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:#5c7a66;cursor:pointer;transition:background .15s,color .15s}
+.fontScale button:hover:not(:disabled){background:#eaf2eb;color:#356848}
+.fontScale button:focus-visible{outline:2px solid #5d946b;outline-offset:1px}
+.fontScale button:disabled{color:#c2cdc4;cursor:default}
+.fontScale span{min-width:40px;text-align:center;font-size:9px;font-weight:700;color:#6d9d76;user-select:none}
