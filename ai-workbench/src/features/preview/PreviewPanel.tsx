@@ -352,8 +352,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     document.body.classList.add("resizing-preview");
 
     function resize(moveEvent: PointerEvent) {
-      const maxWidth = Math.min(720, window.innerWidth - 244 - 480);
-      onPreviewWidthChange(Math.min(maxWidth, startWidth + startX - moveEvent.clientX));
+      onPreviewWidthChange(startWidth + startX - moveEvent.clientX);
     }
 
     function stopResize() {

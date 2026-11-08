@@ -53,7 +53,7 @@ export function Workbench() {
   const materials = [...enterprise.materials, ...(customMaterials[enterprise.id] ?? [])];
 
   useEffect(() => {
-    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota-v2", 20)); setPreviewWidth(readLocal("previewWidth", 414)); }, 0);
+    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota-v2", 20)); setPreviewWidth(clampPreviewWidth(readLocal("previewWidth", 414))); }, 0);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -153,8 +153,16 @@ export function Workbench() {
     writeLocal("schedule", [item, ...readLocal<ScheduleItem[]>("schedule", [])]);
   }
 
+  function clampPreviewWidth(width: number) {
+    const viewport = Math.min(window.innerWidth, 1800);
+    // 预留宽度对应 globals.css 断点下的侧栏与主栏最小轨道：≤1250px 为 205+450，以上为 244+570
+    const reserve = window.innerWidth <= 1250 ? 655 : 814;
+    const max = Math.max(320, Math.min(720, viewport - reserve));
+    return Math.round(Math.max(320, Math.min(width, max)));
+  }
+
   function changePreviewWidth(width: number) {
-    const next = Math.round(Math.min(720, Math.max(320, width)));
+    const next = clampPreviewWidth(width);
     setPreviewWidth(next);
     writeLocal("previewWidth", next);
   }
