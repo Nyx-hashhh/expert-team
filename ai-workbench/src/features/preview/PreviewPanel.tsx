@@ -105,7 +105,6 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   const [expandedZoneSection, setExpandedZoneSection] = useState<"favorites" | "recommended" | "all" | null>("favorites");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(2000, 0, 1));
   const [isExporting, setIsExporting] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(0);
   const [slide, setSlide] = useState(0);
   const [liked, setLiked] = useState(false);
   const [collected, setCollected] = useState(false);
@@ -128,14 +127,6 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - calendarOffset + 1);
     return { date, value: dateValue(date), inMonth: date.getMonth() === calendarMonth.getMonth() };
   });
-
-  useEffect(() => {
-    if (!content || result?.source !== "fallback") return;
-    const reset = setTimeout(() => setVisibleCount(0), 0);
-    const timer = setInterval(() => setVisibleCount((value) => Math.min(value + 6, content.body.length)), 16);
-    return () => { clearTimeout(reset); clearInterval(timer); };
-  }, [content, result?.source]);
-  const shownContent = content && result?.source === "fallback" ? { ...content, body: content.body.slice(0, visibleCount), hashtags: visibleCount >= content.body.length ? content.hashtags : [] } : content;
 
   const metrics = useMemo(() => {
     const seed = hashCode(`${enterprise.id}|${activePlatform}|${activeVersion}`);
@@ -391,7 +382,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => { setScheduleOpen(false); onVersionChange(version); }} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
       <div className="preview-scroll" ref={captureRef}>
-        {!shownContent ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={shownContent} enterprise={enterprise} interaction={interaction} />}
+        {!content ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={content} enterprise={enterprise} interaction={interaction} />}
       </div>
       <div className="preview-actions">
         <button onClick={copyContent} disabled={!content}><Copy size={16} /> 复制全文</button>

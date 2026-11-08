@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
-import { buildFallback } from "@/data/fallback";
 import { buildRuntimeGenerationInstruction } from "@/data/copywriting-runtime";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult } from "@/contracts/content";
@@ -45,12 +44,11 @@ export async function POST(request: Request) {
   catch { return Response.json({ error: "请求格式不符合数据契约" }, { status: 400 }); }
   const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId);
   if (!enterprise) return Response.json({ error: "企业案例不存在" }, { status: 404 });
-  const fallback = () => Response.json(buildFallback(input, enterprise));
   const mode = input.translationMode ?? input.creativeBrief?.mode ?? "story";
   const playbook = getTranslationPlaybook(mode);
   const runtimeInstruction = buildRuntimeGenerationInstruction(enterprise, mode, input.tone, input.platforms, playbook.generationInstruction);
   const apiKey = process.env.GENERATE_LLM_API_KEY || process.env.LLM_API_KEY;
-  if (!apiKey) return fallback();
+  if (!apiKey) return Response.json({ error: "未配置文案生成 API：请在 .env.local 中设置 GENERATE_LLM_API_KEY" }, { status: 503 });
 
   const selected = input.selectedMaterials.filter((item) => input.selectedMaterialIds.includes(item.id));
   const client = new OpenAI({
@@ -69,10 +67,15 @@ export async function POST(request: Request) {
       ],
     });
     const raw = completion.choices[0]?.message?.content;
-    if (!raw) return fallback();
-    const parsed = resultSchema.parse(JSON.parse(raw));
-    for (const platform of input.platforms) if (!parsed[platform]) return fallback();
+    if (!raw) return Response.json({ error: "模型未返回内容，请重试" }, { status: 502 });
+    let parsed: z.infer<typeof resultSchema>;
+    try { parsed = resultSchema.parse(JSON.parse(raw)); }
+    catch { return Response.json({ error: "模型返回内容不符合约定格式，请重试" }, { status: 502 }); }
+    for (const platform of input.platforms) if (!parsed[platform]) return Response.json({ error: `模型结果缺少 ${platform} 平台内容，请重试` }, { status: 502 });
     const result: GenerateResult = { contractVersion: CONTRACT_VERSION, enterpriseId: enterprise.id, source: "ai", platforms: Object.fromEntries(input.platforms.map((platform) => [platform, parsed[platform]])) };
     return Response.json(result);
-  } catch { return fallback(); }
+  } catch (error) {
+    console.error("[generate] 上游 API 调用失败：", error);
+    return Response.json({ error: "文案生成 API 调用失败：请检查网络与供应商配置后重试" }, { status: 502 });
+  }
 }

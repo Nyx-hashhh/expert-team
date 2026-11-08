@@ -5,10 +5,8 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import enterprisesData from "@/data/enterprises.json";
-import { buildFallback } from "@/data/fallback";
 import { CONTRACT_VERSION, PLATFORM_LABELS, PLATFORMS, TRANSLATION_MODE_LABELS, type CreativeBrief, type Enterprise, type GenerateRequest, type GenerateResult, type Material, type MaterialType, type Platform, type ScheduleItem, type TranslateRequest, type TranslateResult, type TranslationMode, type Version } from "@/contracts/content";
 import { readLocal, writeLocal } from "@/lib/storage";
-import { buildCreativeBrief } from "@/data/translation";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { Button } from "@/components/ui/button";
@@ -52,6 +50,14 @@ export function Workbench() {
   const enterprise = enterprises.find((item) => item.id === enterpriseId) ?? enterprises[0];
   const materials = [...enterprise.materials, ...(customMaterials[enterprise.id] ?? [])];
 
+  function clampPreviewWidth(width: number) {
+    const viewport = Math.min(window.innerWidth, 1800);
+    // 预留宽度对应 globals.css 断点下的侧栏与主栏最小轨道：≤1250px 为 205+450，以上为 244+570
+    const reserve = window.innerWidth <= 1250 ? 655 : 814;
+    const max = Math.max(320, Math.min(720, viewport - reserve));
+    return Math.round(Math.max(320, Math.min(width, max)));
+  }
+
   useEffect(() => {
     const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setQuota(readLocal("quota-v2", 20)); setPreviewWidth(clampPreviewWidth(readLocal("previewWidth", 414))); }, 0);
     return () => clearTimeout(timeout);
@@ -66,19 +72,23 @@ export function Workbench() {
     setNotice("");
   }
 
-  async function requestCreativeBrief() {
+  async function requestCreativeBrief(): Promise<TranslateResult> {
     const selectedMaterials = materials.filter((item) => selectedIds.includes(item.id));
     const translateRequest: TranslateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterials, goal: goal.trim(), tone, mode: translationMode };
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5500);
     try {
       const response = await fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(translateRequest), signal: controller.signal });
-      if (!response.ok) throw new Error("translate unavailable");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "智能转译服务不可用");
+      }
       const translated = await response.json() as TranslateResult;
-      if (translated.contractVersion !== CONTRACT_VERSION || !translated.brief?.storyAngle) throw new Error("invalid translate response");
+      if (translated.contractVersion !== CONTRACT_VERSION || !translated.brief?.storyAngle) throw new Error("转译响应格式异常");
       return translated;
-    } catch {
-      return { contractVersion: CONTRACT_VERSION, source: "local", brief: buildCreativeBrief(translateRequest, enterprise) } satisfies TranslateResult;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") throw new Error("智能转译请求超时，请重试");
+      throw error instanceof Error ? error : new Error("智能转译服务不可用");
     } finally {
       clearTimeout(timeout);
     }
@@ -87,9 +97,15 @@ export function Workbench() {
   async function translateIdea() {
     if (!goal.trim()) { setNotice("请先填写客户的核心宣发诉求，再生成文案思路"); return; }
     setIsTranslating(true); setNotice("正在把客户输入转成自然、有故事的文案思路…");
-    const translated = await requestCreativeBrief();
-    setCreativeBrief(translated.brief); setIsTranslating(false);
-    setNotice(translated.source === "local" ? "已由本地转译引擎生成文案思路" : "已由智能模型生成文案思路");
+    try {
+      const translated = await requestCreativeBrief();
+      setCreativeBrief(translated.brief);
+      setNotice("已由智能模型生成文案思路");
+    } catch (error) {
+      setNotice(`智能转译失败：${error instanceof Error ? error.message : "请稍后重试"}`);
+    } finally {
+      setIsTranslating(false);
+    }
   }
 
   function fillGoalFromBrief() {
@@ -125,25 +141,31 @@ export function Workbench() {
     if (!platforms.length) { setNotice("请至少选择一个目标平台"); return; }
     if (!isDevelopment && quota <= 0) { setNotice("试用额度已用完"); return; }
     setIsGenerating(true); setNotice("正在提炼故事切口与真实表达…");
-    const translated = creativeBrief ? null : await requestCreativeBrief();
+    const translated = creativeBrief ? null : await requestCreativeBrief().catch(() => null);
     const brief = creativeBrief ?? translated?.brief;
     if (brief) setCreativeBrief(brief);
     const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, selectedMaterialIds: selectedIds, selectedMaterials: materials.filter((item) => selectedIds.includes(item.id)), goal: goal.trim(), platforms, tone, translationMode, creativeBrief: brief };
     setNotice("正在按文案思路准备各平台 A/B 内容…");
-    let next: GenerateResult;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
     try {
       const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal: controller.signal });
-      if (!response.ok) throw new Error("unavailable");
-      next = await response.json() as GenerateResult;
-      if (next.contractVersion !== CONTRACT_VERSION || !next.platforms[platforms[0]]?.A) throw new Error("invalid response");
-    } catch { next = buildFallback(request, enterprise); }
-    finally { clearTimeout(timeout); }
-    setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
-    if (!isDevelopment) { setQuota(quota - 1); writeLocal("quota-v2", quota - 1); }
-    setIsGenerating(false);
-    setNotice(next.source === "fallback" ? "已加载本地优质演示结果" : "已生成各平台 A/B 创意文案");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "文案生成服务不可用");
+      }
+      const next = await response.json() as GenerateResult;
+      if (next.contractVersion !== CONTRACT_VERSION || !next.platforms[platforms[0]]?.A) throw new Error("生成响应格式异常");
+      setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
+      if (!isDevelopment) { setQuota(quota - 1); writeLocal("quota-v2", quota - 1); }
+      setNotice("已生成各平台 A/B 创意文案");
+    } catch (error) {
+      const message = error instanceof DOMException && error.name === "AbortError" ? "请求超时，请重试" : error instanceof Error ? error.message : "请检查 API 配置后重试";
+      setNotice(`生成失败：${message}`);
+    } finally {
+      clearTimeout(timeout);
+      setIsGenerating(false);
+    }
   }
 
   function schedule(scheduledAt: string, timeZone: string) {
@@ -151,14 +173,6 @@ export function Workbench() {
     if (!content) return;
     const item: ScheduleItem = { id: crypto.randomUUID(), enterpriseId, platform: activePlatform, version: activeVersion, content, scheduledAt, timeZone, status: "draft" };
     writeLocal("schedule", [item, ...readLocal<ScheduleItem[]>("schedule", [])]);
-  }
-
-  function clampPreviewWidth(width: number) {
-    const viewport = Math.min(window.innerWidth, 1800);
-    // 预留宽度对应 globals.css 断点下的侧栏与主栏最小轨道：≤1250px 为 205+450，以上为 244+570
-    const reserve = window.innerWidth <= 1250 ? 655 : 814;
-    const max = Math.max(320, Math.min(720, viewport - reserve));
-    return Math.round(Math.max(320, Math.min(width, max)));
   }
 
   function changePreviewWidth(width: number) {

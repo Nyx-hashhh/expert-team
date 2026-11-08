@@ -29,7 +29,7 @@ GENERATE_LLM_MODEL=生成使用的模型名
 
 ## 智能转译 API
 
-`POST /api/translate` 先把客户的原始诉求转换为可执行的创意简报，再由 `POST /api/generate` 生成各平台文案。未配置 `LLM_API_KEY` 时，接口自动使用本地规则引擎；配置兼容 OpenAI 的模型后会优先调用模型，失败时仍自动回退到本地结果。
+`POST /api/translate` 先把客户的原始诉求转换为可执行的创意简报，再由 `POST /api/generate` 生成各平台文案。两个接口都只调用模型 API：未配置密钥时返回 503 并提示缺少的环境变量；调用失败、超时或模型返回格式不符合约定时返回 502 和具体原因，不再回退到本地兜底内容。
 
 请求示例：
 
@@ -52,7 +52,7 @@ GENERATE_LLM_MODEL=生成使用的模型名
 | --- | --- | --- |
 | 主程 A | `src/contracts/`、`src/features/studio/`、`src/app/api/`、`src/components/ui/`、`package.json` | 数据契约、主控台、模型接口与全局依赖 |
 | 队友 B | `src/features/preview/` | 右侧多平台预览与交付按钮 |
-| 队友 C | `src/data/`、`src/features/analytics/`、`src/app/analytics/` | 行业案例、兜底内容与传播看板 |
+| 队友 C | `src/data/`、`src/features/analytics/`、`src/app/analytics/` | 行业案例与传播看板 |
 | 主程 A | `src/app/page.tsx`、`src/app/layout.tsx`、`src/features/calendar/` | 页面装配与排期状态流转 |
 
 共享契约在 `src/contracts/content.ts`，当前版本 `contractVersion: 1`。生成请求包含企业 ID、已选素材 ID 与素材正文、诉求、平台数组和语调。返回结果按平台划分，每个平台固定有 `A`、`B` 两版。修改契约时先与其他负责人同步，避免跨目录编辑。

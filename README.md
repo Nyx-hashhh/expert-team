@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | A，主程 | `ai-workbench/src/contracts/`、`ai-workbench/src/features/studio/`、`ai-workbench/src/app/api/`、`ai-workbench/src/components/ui/`、`ai-workbench/package.json` | 数据契约、全局依赖、主控台表单和模型接口；维护首页装配文件 `ai-workbench/src/app/page.tsx` |
 | B，预览 | `ai-workbench/src/features/preview/` | 小红书手机卡、微博信息流、抖音分镜预览，以及复制、导图和交付交互 |
-| C（huihui1753），案例与报表 | `ai-workbench/src/data/`、`ai-workbench/src/features/analytics/`、`ai-workbench/src/app/analytics/` | 行业案例、演示兜底数据、模拟指标与图表看板 |
+| C（huihui1753），案例与报表 | `ai-workbench/src/data/`、`ai-workbench/src/features/analytics/`、`ai-workbench/src/app/analytics/` | 行业案例、模拟指标与图表看板 |
 
 发布日历位于 `ai-workbench/src/features/calendar/` 和 `ai-workbench/src/app/calendar/`，目前由 A 维护。改动公共契约、页面入口、全局样式或 `package.json` 时，先在团队里说明，再由 A 统一处理或协调合并。
 
