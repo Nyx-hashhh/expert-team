@@ -68,8 +68,10 @@ export async function POST(request: Request) {
   const client = new OpenAI({
     apiKey,
     baseURL: process.env.GENERATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    timeout: 75000,
-    maxRetries: 2,
+    // 前端 100 秒中止，平台间还有 2s 错峰：单次 40s × 最多 2 次平台内尝试 ≈ 82s，
+    // 保证任何单个平台的最坏情况也不越过前端预算，避免供应商卡顿时前端干到超时
+    timeout: 40000,
+    maxRetries: 1,
   });
   const model = process.env.GENERATE_LLM_MODEL || process.env.LLM_MODEL || "deepseek-chat";
 
