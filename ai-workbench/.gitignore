@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 本地运行时数据（设置界面保存的密钥、账号与用量，不入库）
+/.local-data/
