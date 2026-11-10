@@ -5,7 +5,7 @@
 - [核心文案撰写骨架](copy-skeleton.md)
 - [参考案例库](reference-library.md)
 - [真实性与证据](evidence-and-safety.md)
-- [宣发任务拆解](task-brief.md)
+- [宣发任务拆解](../../idea/task-brief.md)
 
 ## 创作者定位（贯穿所有生成）
 

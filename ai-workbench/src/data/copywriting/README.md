@@ -13,12 +13,12 @@
 
 ## 目录导航
 
-- [01-foundation](01-foundation/)：真实性、证据、安全边界与总流程。
-- [02-modes](02-modes/)：三种叙事模式的大模板。
-- [03-categories](03-categories/)：四类品类在三种模式下的细化规则。
-- [04-platforms](04-platforms/)：七个目标平台的内容结构。
-- [05-tones](05-tones/)：四种表达语调的语言规则。
-- [06-composition](06-composition/)：组合顺序、决策矩阵和最终写作规则。
+- [01-foundation](post/01-foundation/)：真实性、证据、安全边界与总流程。
+- [02-modes](idea/02-modes/)：三种叙事模式的大模板。
+- [03-categories](post/03-categories/)：四类品类在三种模式下的细化规则。
+- [04-platforms](post/04-platforms/)：七个目标平台的内容结构。
+- [05-tones](post/05-tones/)：四种表达语调的语言规则。
+- [06-composition](post/06-composition/)：组合顺序、决策矩阵和最终写作规则。
 
 ## 唯一正确的组合顺序
 
