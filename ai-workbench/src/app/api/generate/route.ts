@@ -1,9 +1,10 @@
-import OpenAI from "openai";
 import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { buildRuntimeGenerationInstruction } from "@/data/copywriting-runtime";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult, type Platform, type PlatformVersions, type TranslationMode } from "@/contracts/content";
+import { createLlmClient } from "@/lib/llm-client";
+import { consumeUsage, getLlmConfig, hasQuota } from "@/lib/server-store";
 
 const creativeBriefSchema = z.object({
   mode: z.enum(["story", "seed", "brand"]), audience: z.string(), coreMessage: z.string(), storyAngle: z.string(), hook: z.string(),
@@ -60,20 +61,15 @@ export async function POST(request: Request) {
   if (!enterprise) return Response.json({ error: "企业案例不存在" }, { status: 404 });
   const mode = input.translationMode ?? input.creativeBrief?.mode ?? "story";
   const playbook = getTranslationPlaybook(mode);
-  const apiKey = process.env.GENERATE_LLM_API_KEY || process.env.LLM_API_KEY;
-  if (!apiKey) return Response.json({ error: "未配置文案生成 API：请在 .env.local 中设置 GENERATE_LLM_API_KEY" }, { status: 503 });
+  const { apiKey, baseURL, model } = getLlmConfig("generate");
+  if (!apiKey) return Response.json({ error: "未配置文案生成 API：请前往「设置 → API 配置」填写 API 密钥" }, { status: 503 });
+  if (!hasQuota()) return Response.json({ error: "可用次数已用完，请前往「设置 → 用量与充值」充值后重试" }, { status: 402 });
 
   const selected = input.selectedMaterials.filter((item) => input.selectedMaterialIds.includes(item.id));
   const userPayload = { enterprise: { name: enterprise.name, industry: enterprise.industry, location: enterprise.location, tagline: enterprise.tagline }, selectedMaterials: selected, goal: input.goal, tone: input.tone, translationMode: input.translationMode, creativeBrief: input.creativeBrief };
-  const client = new OpenAI({
-    apiKey,
-    baseURL: process.env.GENERATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    // 前端 100 秒中止，平台间还有 2s 错峰：单次 40s × 最多 2 次平台内尝试 ≈ 82s，
-    // 保证任何单个平台的最坏情况也不越过前端预算，避免供应商卡顿时前端干到超时
-    timeout: 40000,
-    maxRetries: 1,
-  });
-  const model = process.env.GENERATE_LLM_MODEL || process.env.LLM_MODEL || "deepseek-chat";
+  // 前端 100 秒中止，平台间还有 2s 错峰：单次 40s × 最多 2 次平台内尝试 ≈ 82s，
+  // 保证任何单个平台的最坏情况也不越过前端预算，避免供应商卡顿时前端干到超时
+  const client = createLlmClient({ apiKey, baseURL, timeoutMs: 40000, maxRetries: 1 });
 
   // 各平台并行请求：错峰 2 秒启动，避免同时新建多条连接触发供应商侧连接超时；
   // 单平台最多 2 次尝试，容忍模型偶发的结构瑕疵（漏字段、包数组）
@@ -115,6 +111,9 @@ export async function POST(request: Request) {
     return Response.json({ error: `部分平台生成失败（${failures.length}/${input.platforms.length}），请重试` }, { status: 502 });
   }
   const platforms = Object.fromEntries(settled.map((item) => item.status === "fulfilled" ? item.value : [])) as Partial<Record<Platform, PlatformVersions>>;
+  // 只对成功消耗次数（演示计费：成功一次扣一次）
+  const usage = consumeUsage("generate", 1);
+  console.log(`[usage] 生成成功，已用 ${usage.used}/${usage.quota} 次`);
   const result: GenerateResult = { contractVersion: CONTRACT_VERSION, enterpriseId: enterprise.id, source: "ai", platforms };
   return Response.json(result);
 }

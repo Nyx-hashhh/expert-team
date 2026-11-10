@@ -1,8 +1,9 @@
-import OpenAI from "openai";
 import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, type Enterprise, type TranslateRequest, type TranslateResult } from "@/contracts/content";
+import { createLlmClient } from "@/lib/llm-client";
+import { consumeUsage, getLlmConfig, hasQuota } from "@/lib/server-store";
 
 const materialSchema = z.object({ id: z.string(), type: z.enum(["product", "story", "reference"]), title: z.string().max(200), content: z.string().max(5000) });
 const requestSchema = z.object({
@@ -29,20 +30,16 @@ export async function POST(request: Request) {
   const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId);
   if (!enterprise) return Response.json({ error: "企业案例不存在" }, { status: 404 });
   const playbook = getTranslationPlaybook(input.mode);
-  const apiKey = process.env.TRANSLATE_LLM_API_KEY || process.env.LLM_API_KEY;
-  if (!apiKey) return Response.json({ error: "未配置智能转译 API：请在 .env.local 中设置 TRANSLATE_LLM_API_KEY" }, { status: 503 });
+  const { apiKey, baseURL, model } = getLlmConfig("translate");
+  if (!apiKey) return Response.json({ error: "未配置智能转译 API：请前往「设置 → API 配置」填写 API 密钥" }, { status: 503 });
+  if (!hasQuota()) return Response.json({ error: "可用次数已用完，请前往「设置 → 用量与充值」充值后重试" }, { status: 402 });
 
-  const client = new OpenAI({
-    apiKey,
-    baseURL: process.env.TRANSLATE_LLM_BASE_URL || process.env.LLM_BASE_URL || undefined,
-    // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
-    // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
-    timeout: 16000,
-    maxRetries: 1,
-  });
+  // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
+  // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
+  const client = createLlmClient({ apiKey, baseURL, timeoutMs: 16000, maxRetries: 1 });
   try {
     const completion = await client.chat.completions.create({
-      model: process.env.TRANSLATE_LLM_MODEL || process.env.LLM_MODEL || "deepseek-chat",
+      model,
       response_format: { type: "json_object" },
       reasoning_effort: "low",
       messages: [
@@ -69,6 +66,9 @@ export async function POST(request: Request) {
       console.error("[translate] 模型返回内容解析失败：", error, "finish_reason=", completion.choices[0]?.finish_reason, "usage=", JSON.stringify(completion.usage), "raw头300字=", raw.slice(0, 300), "raw尾200字=", raw.slice(-200));
       return Response.json({ error: "模型返回内容不符合约定格式，请重试" }, { status: 502 });
     }
+    // 只对成功消耗次数（演示计费：成功一次扣一次）
+    const usage = consumeUsage("translate", 1);
+    console.log(`[usage] 转译成功，已用 ${usage.used}/${usage.quota} 次`);
     return Response.json({ contractVersion: CONTRACT_VERSION, source: "ai", brief } satisfies TranslateResult);
   } catch (error) {
     console.error("[translate] 上游 API 调用失败：", error);
