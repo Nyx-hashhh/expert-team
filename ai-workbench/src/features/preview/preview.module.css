@@ -221,3 +221,29 @@
 .fontScale button:focus-visible{outline:2px solid #5d946b;outline-offset:1px}
 .fontScale button:disabled{color:#c2cdc4;cursor:default}
 .fontScale span{min-width:40px;text-align:center;font-size:9px;font-weight:700;color:#6d9d76;user-select:none}
+
+/* 手改模式：在预览面板直接编辑已生成文案 */
+.editToggle{display:flex;align-items:center;gap:5px;height:25px;padding:0 10px;border:1px solid #dfe8df;border-radius:15px;background:#fff;color:#5c7a66;font-size:10px;font-weight:700;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap}
+.editToggle:hover:not(:disabled){background:#eaf2eb;color:#356848}
+.editToggle[aria-pressed="true"]{background:#4b805b;border-color:#4b805b;color:#fff}
+.editToggle[aria-pressed="true"]:hover{background:#396c48}
+.editToggle:disabled{color:#c2cdc4;cursor:default}
+.editToggle:focus-visible{outline:2px solid #5d946b;outline-offset:1px}
+.editPanel{position:relative;z-index:3;margin-top:11px;padding:15px;border:1px solid #dce9dd;border-radius:11px;background:#f8fbf7;box-shadow:0 8px 24px #345c3812}
+.editHeading,.editHeading>div{display:flex;align-items:center;gap:7px}
+.editHeading{justify-content:space-between;color:#426d4c;font-size:12px}
+.editHeading button{display:grid;place-items:center;width:25px;height:25px;border:0;background:transparent;color:#849b88;cursor:pointer}
+.editHeading button:hover{color:#426d4c}
+.editPanel>p{margin:7px 0 0;color:#7c9180;font-size:10px}
+.editField{display:grid;gap:6px;margin-top:11px;color:#637c68;font-size:10px;font-weight:700}
+.editField span small{margin-left:4px;color:#9aac9d;font-weight:400}
+.editField input,.editField textarea{width:100%;padding:8px 9px;border:1px solid #d7e4d8;border-radius:7px;background:#fff;color:#3d4f43;font:inherit;font-size:11px;line-height:1.7;resize:vertical}
+.editField input::placeholder,.editField textarea::placeholder{color:#b0bfb2}
+.editField input:focus,.editField textarea:focus{border-color:#8eb99a;outline:0;background:#fcfefb}
+.editActions{display:flex;gap:8px;margin-top:13px}
+.editActions button{display:flex;align-items:center;justify-content:center;gap:5px;flex:1;min-height:34px;border-radius:7px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.editRestore{border:1px solid #d7e4d8;background:#fff;color:#4d7057}
+.editRestore:hover{background:#f2f8f1;border-color:#8eb99a}
+.editDone{border:0;background:#4b805b;color:#fff}
+.editDone:hover{background:#396c48}
+.editRestore:focus-visible,.editDone:focus-visible{outline:2px solid #5d946b;outline-offset:1px}

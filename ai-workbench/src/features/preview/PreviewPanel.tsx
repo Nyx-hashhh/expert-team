@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Minus, Music2, Pause, Play, Plus, Repeat2, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
+import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Minus, Music2, Pause, PenLine, Play, Plus, Repeat2, RotateCcw, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
@@ -22,6 +22,7 @@ interface PreviewPanelProps {
   onVersionChange: (version: Version) => void;
   onPreviewWidthChange: (width: number) => void;
   onSchedule: (scheduledAt: string, timeZone: string) => void;
+  onContentChange: (updater: (content: ContentVersion) => ContentVersion) => void;
 }
 
 function hashCode(input: string): number {
@@ -98,10 +99,17 @@ function DemoHero({ enterprise, creditClassName = "", language = "zh" }: { enter
   return <><Image src={hero.image} alt={language === "zh" ? hero.alt : ENGLISH_HERO_ALTS[enterprise.id] ?? "Illustrative image"} fill sizes="300px" loading="eager" className={previewCss.demoHeroImage} unoptimized /><small className={`${previewCss.demoHeroCredit} ${creditClassName}`}>{language === "zh" ? "AI 示意图" : "AI illustration"}</small></>;
 }
 
-export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, previewWidth, onPlatformChange, onVersionChange, onPreviewWidthChange, onSchedule }: PreviewPanelProps) {
+export function PreviewPanel({ enterprise, result, activePlatform, activeVersion, previewWidth, onPlatformChange, onVersionChange, onPreviewWidthChange, onSchedule, onContentChange }: PreviewPanelProps) {
   const captureRef = useRef<HTMLDivElement>(null);
   const platformTabsRef = useRef<HTMLDivElement>(null);
   const [notice, setNotice] = useState("");
+  // 手改模式：直接编辑当前预览的标题/正文/话题标签，修改实时写回生成结果
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editHashtags, setEditHashtags] = useState("");
+  const selfEditRef = useRef(false);
+  const editOriginalRef = useRef<ContentVersion | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
@@ -151,6 +159,8 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
   }, [enterprise.id, activePlatform, activeVersion]);
 
   useEffect(() => {
+    // 手改过程中每次按键都会更换 content 引用，此处跳过重置，避免轮播/点赞状态被打字打断
+    if (editOpen) return;
     const reset = setTimeout(() => {
       setSlide(0);
       setLiked(false);
@@ -161,7 +171,17 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
       setPlaying(true);
     }, 0);
     return () => clearTimeout(reset);
-  }, [content]);
+  }, [content, editOpen]);
+  useEffect(() => {
+    // 手改输入框跟随内容变化：切换平台/版本或重新生成时重新读取；
+    // 变更来自手改本身时跳过，避免输入法与光标位置抖动
+    if (!editOpen || !content) return;
+    if (selfEditRef.current) { selfEditRef.current = false; return; }
+    editOriginalRef.current = content;
+    setEditTitle(content.title);
+    setEditBody(content.body);
+    setEditHashtags(content.hashtags.join(" "));
+  }, [content, editOpen]);
   useEffect(() => {
     const list = platformTabsRef.current;
     const selected = list?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
@@ -230,6 +250,44 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
     onShotChange: setActiveShot,
     onTogglePlay: () => setPlaying((value) => !value),
   };
+
+  function toggleEdit() {
+    if (!content) return;
+    setEditOpen((open) => !open);
+  }
+
+  function applyEdit(patch: Partial<ContentVersion>) {
+    if (!content || !onContentChange) return;
+    selfEditRef.current = true;
+    onContentChange((current) => ({ ...current, ...patch }));
+  }
+
+  function handleEditTitle(value: string) {
+    setEditTitle(value);
+    applyEdit({ title: value });
+  }
+
+  function handleEditBody(value: string) {
+    setEditBody(value);
+    applyEdit({ body: value });
+  }
+
+  function handleEditHashtags(value: string) {
+    setEditHashtags(value);
+    const tags = value.split(/[\s,，、]+/).map((tag) => tag.replace(/^#+/, "").trim()).filter(Boolean);
+    applyEdit({ hashtags: tags });
+  }
+
+  function restoreEditOriginal() {
+    const source = editOriginalRef.current;
+    if (!source) return;
+    selfEditRef.current = true;
+    setEditTitle(source.title);
+    setEditBody(source.body);
+    setEditHashtags(source.hashtags.join(" "));
+    applyEdit({ title: source.title, body: source.body, hashtags: source.hashtags });
+    setNotice("已还原为生成原文");
+  }
 
   async function copyContent() {
     if (!content) return;
@@ -402,6 +460,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <div><span className="eyebrow">LIVE PREVIEW</span><h2>多端拟真预览</h2></div>
         <div className={previewCss.headerTools}>
           <span className="live-pill"><span /> 实时同步</span>
+          <button type="button" className={previewCss.editToggle} aria-pressed={editOpen} aria-expanded={editOpen} onClick={toggleEdit} disabled={!content} title="手动修改当前文案"><PenLine size={12} /> 手改</button>
           <div className={previewCss.fontScale} role="group" aria-label="调整页面字体大小">
             <button type="button" onClick={() => adjustFontScale(-FONT_SCALE_STEP)} disabled={fontScale <= FONT_SCALE_MIN} aria-label="减小字体" title="减小字体"><Minus size={12} /></button>
             <span title="当前字体大小">Aa {fontScale}%</span>
@@ -419,6 +478,17 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <button type="button" className={previewCss.platformTabArrow} aria-label="向右查看平台" onClick={() => platformTabsRef.current?.scrollBy({ left: 180, behavior: "smooth" })}><ChevronRight size={15} /></button>
       </div>
       <div className="version-row"><span>创意版本</span><div className="version-tabs">{(["A", "B"] as Version[]).map((version) => <button key={version} onClick={() => { setScheduleOpen(false); onVersionChange(version); }} className={activeVersion === version ? "active" : ""}>版本 {version}</button>)}</div></div>
+      {editOpen && content && <form className={previewCss.editPanel} onSubmit={(event) => event.preventDefault()}>
+        <div className={previewCss.editHeading}><div><PenLine size={16} /><strong>手动修改文案</strong></div><button type="button" aria-label="关闭手改" onClick={() => setEditOpen(false)}><X size={16} /></button></div>
+        <p>{PLATFORM_LABELS[activePlatform]} · 版本 {activeVersion} · 修改会实时同步到拟真预览、复制与导出</p>
+        <label className={previewCss.editField}><span>标题</span><input value={editTitle} onChange={(event) => handleEditTitle(event.target.value)} placeholder="标题" /></label>
+        <label className={previewCss.editField}><span>正文</span><textarea value={editBody} onChange={(event) => handleEditBody(event.target.value)} rows={6} placeholder="正文" /></label>
+        <label className={previewCss.editField}><span>话题标签 <small>用空格分隔，# 号可省略</small></span><input value={editHashtags} onChange={(event) => handleEditHashtags(event.target.value)} placeholder="例如：春茶 手作 城市周边" /></label>
+        <div className={previewCss.editActions}>
+          <button type="button" className={previewCss.editRestore} onClick={restoreEditOriginal}><RotateCcw size={14} /> 还原原文</button>
+          <button type="button" className={previewCss.editDone} onClick={() => setEditOpen(false)}>完成手改</button>
+        </div>
+      </form>}
       <div className={`preview-scroll ${previewCss.mockType}`} ref={captureRef}>
         {!content ? <div className="empty-preview"><div className="empty-icon">✦</div><h3>好内容，即将发生</h3><p>选择素材并输入宣发诉求，点击生成后即可在这里预览各平台 A/B 文案。</p></div> : <PlatformPreview platform={activePlatform} content={content} enterprise={enterprise} interaction={interaction} />}
       </div>
