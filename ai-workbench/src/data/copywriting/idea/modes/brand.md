@@ -80,8 +80,8 @@
 
 ## 九、品类细化
 
-- [农产品](../03-categories/agricultural-products/brand.md)
-- [非遗产品](../03-categories/intangible-heritage-products/brand.md)
-- [美妆](../03-categories/beauty/brand.md)
-- [日用品](../03-categories/daily-necessities/brand.md)
+- [农产品](../../post/categories/agricultural-products/brand.md)
+- [非遗产品](../../post/categories/intangible-heritage-products/brand.md)
+- [美妆](../../post/categories/beauty/brand.md)
+- [日用品](../../post/categories/daily-necessities/brand.md)
 
