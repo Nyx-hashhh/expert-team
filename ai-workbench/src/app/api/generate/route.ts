@@ -13,6 +13,7 @@ const creativeBriefSchema = z.object({
 const requestSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   enterpriseId: z.string(),
+  enterpriseProfile: z.object({ name: z.string().trim().min(1).max(60), industry: z.string().trim().min(1).max(60), location: z.string().trim().max(60), tagline: z.string().trim().max(120) }).optional(),
   selectedMaterialIds: z.array(z.string()),
   selectedMaterials: z.array(z.object({ id: z.string(), type: z.enum(["product", "story", "reference"]), title: z.string().max(200), content: z.string().max(5000) })).max(30),
   goal: z.string().trim().min(1).max(2000),
@@ -57,7 +58,9 @@ export async function POST(request: Request) {
   let input: z.infer<typeof requestSchema>;
   try { input = requestSchema.parse(await request.json()); }
   catch { return Response.json({ error: "请求格式不符合数据契约" }, { status: 400 }); }
-  const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId);
+  // 内置案例优先；自定义企业（前端 "+" 新增）未命中时回退使用请求自带的企业档案
+  const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId)
+    ?? (input.enterpriseProfile ? { id: input.enterpriseId, materials: [], accent: "", ...input.enterpriseProfile } as Enterprise : undefined);
   if (!enterprise) return Response.json({ error: "企业案例不存在" }, { status: 404 });
   const mode = input.translationMode ?? input.creativeBrief?.mode ?? "story";
   const playbook = getTranslationPlaybook(mode);
