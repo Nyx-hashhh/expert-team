@@ -9,6 +9,7 @@ const materialSchema = z.object({ id: z.string(), type: z.enum(["product", "stor
 const requestSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   enterpriseId: z.string(),
+  enterpriseProfile: z.object({ name: z.string().trim().min(1).max(60), industry: z.string().trim().min(1).max(60), location: z.string().trim().max(60), tagline: z.string().trim().max(120) }).optional(),
   selectedMaterials: z.array(materialSchema).max(30),
   goal: z.string().trim().min(1).max(2000),
   tone: z.string().trim().min(1).max(80),
@@ -27,7 +28,9 @@ export async function POST(request: Request) {
   try { input = requestSchema.parse(await request.json()) as TranslateRequest; }
   catch { return Response.json({ error: "请填写客户诉求并选择有效的转译模式" }, { status: 400 }); }
 
-  const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId);
+  // 内置案例优先；自定义企业（前端 "+" 新增）未命中时回退使用请求自带的企业档案
+  const enterprise = (enterprisesData as Enterprise[]).find((item) => item.id === input.enterpriseId)
+    ?? (input.enterpriseProfile ? { id: input.enterpriseId, materials: [], accent: "", ...input.enterpriseProfile } as Enterprise : undefined);
   if (!enterprise) return Response.json({ error: "企业案例不存在" }, { status: 404 });
   const playbook = getTranslationPlaybook(input.mode);
   const { apiKey, baseURL, model } = getLlmConfig("translate");
@@ -63,6 +66,8 @@ export async function POST(request: Request) {
         if (start < 0 || end <= start) throw new Error("invalid json");
         json = JSON.parse(raw.slice(start, end + 1));
       }
+      // 部分模型会把解释文字写进 mode 字段导致校验失败；mode 本就由用户在前端选定，直接回填请求里的值
+      if (json && typeof json === "object" && !Array.isArray(json)) (json as Record<string, unknown>).mode = input.mode;
       brief = briefSchema.parse(json);
     }
     catch (error) {

@@ -23,6 +23,15 @@ export interface Enterprise {
   materials: Material[];
 }
 
+// 自定义企业档案：当 enterpriseId 不在内置案例中时由前端随请求提供。
+// 可选字段、向后兼容：不传时服务端行为与旧契约完全一致（改动需与 A 同步契约再合入）。
+export interface EnterpriseProfile {
+  name: string;
+  industry: string;
+  location: string;
+  tagline: string;
+}
+
 export interface StoryboardShot {
   timeRange: string;
   shot: string;
@@ -50,6 +59,7 @@ export interface CreativeBrief {
 export interface TranslateRequest {
   contractVersion: typeof CONTRACT_VERSION;
   enterpriseId: string;
+  enterpriseProfile?: EnterpriseProfile;
   selectedMaterials: Material[];
   goal: string;
   tone: string;
@@ -65,6 +75,7 @@ export interface TranslateResult {
 export interface GenerateRequest {
   contractVersion: typeof CONTRACT_VERSION;
   enterpriseId: string;
+  enterpriseProfile?: EnterpriseProfile;
   selectedMaterialIds: string[];
   selectedMaterials: Material[];
   goal: string;
