@@ -43,9 +43,20 @@ export default function SettingsPage() {
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [codeCountdown, setCodeCountdown] = useState(0);
+  const [sendBusy, setSendBusy] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMsg, setAuthMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // —— 发信邮箱（SMTP）——
+  const [smtpUser, setSmtpUser] = useState("18654380225@163.com");
+  const [smtpAuthCode, setSmtpAuthCode] = useState("");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpSaved, setSmtpSaved] = useState<{ user: string; authCodeMasked: string } | null>(null);
+  const [smtpBusy, setSmtpBusy] = useState(false);
+  const [smtpMsg, setSmtpMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // —— API 配置 ——
   const [apiKey, setApiKey] = useState("");
@@ -83,14 +94,67 @@ export default function SettingsPage() {
   useEffect(() => {
     loadSettings();
     loadUsage();
+    // 无论是否登录都拉取一次：顺便拿发信邮箱配置状态（只含掩码）
     const token = window.localStorage.getItem("传播工作台:v1:auth-token");
-    if (token) {
-      fetch(`/api/auth?token=${encodeURIComponent(token)}`)
-        .then((res) => res.json())
-        .then((data) => { if (data.user) setUser(data.user); })
-        .catch(() => {});
-    }
+    fetch(`/api/auth?token=${encodeURIComponent(token ?? "")}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) setUser(data.user);
+        if (data.smtp?.user) {
+          setSmtpSaved({ user: data.smtp.user, authCodeMasked: data.smtp.authCodeMasked ?? "" });
+          if (data.smtp.user) setSmtpUser(data.smtp.user);
+        }
+      })
+      .catch(() => {});
   }, [loadSettings, loadUsage]);
+
+  // 验证码 60 秒重发倒计时
+  useEffect(() => {
+    if (codeCountdown <= 0) return;
+    const timer = setTimeout(() => setCodeCountdown((v) => v - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [codeCountdown]);
+
+  async function sendCode() {
+    setSendBusy(true);
+    setAuthMsg(null);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send-code", email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAuthMsg({ ok: false, text: data.error ?? "发送失败" }); return; }
+      setCodeCountdown(60);
+      setAuthMsg({ ok: true, text: "验证码已发送，请查收邮箱（10 分钟内有效，注意垃圾箱）" });
+    } catch {
+      setAuthMsg({ ok: false, text: "网络异常，请重试" });
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
+  async function saveSmtp() {
+    setSmtpBusy(true);
+    setSmtpMsg(null);
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save-smtp", user: smtpUser, authCode: smtpAuthCode, host: smtpHost || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setSmtpMsg({ ok: false, text: data.error ?? "保存失败" }); return; }
+      setSmtpSaved({ user: data.smtp.user, authCodeMasked: data.smtp.authCodeMasked });
+      setSmtpAuthCode("");
+      setSmtpMsg({ ok: true, text: "发信邮箱配置已保存（存于本机 .local-data，不入仓库）" });
+    } catch {
+      setSmtpMsg({ ok: false, text: "网络异常，请重试" });
+    } finally {
+      setSmtpBusy(false);
+    }
+  }
 
   async function submitAuth() {
     setAuthBusy(true);
@@ -99,7 +163,7 @@ export default function SettingsPage() {
       const res = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: authMode, email, password }),
+        body: JSON.stringify({ action: authMode, email, password, ...(authMode === "register" ? { code } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) { setAuthMsg({ ok: false, text: data.error ?? "操作失败" }); return; }
@@ -225,10 +289,34 @@ export default function SettingsPage() {
                 <button onClick={() => setAuthMode("register")} className={`rounded-lg px-3 py-1.5 font-medium ${authMode === "register" ? "bg-[#3c6b4c] text-white" : "border border-[#e8ebe5] text-[#24342b]"}`}>邮箱注册</button>
                 <button onClick={() => setAuthMode("login")} className={`rounded-lg px-3 py-1.5 font-medium ${authMode === "login" ? "bg-[#3c6b4c] text-white" : "border border-[#e8ebe5] text-[#24342b]"}`}>登录</button>
               </div>
-              <div className="mb-3"><label className={labelClass}>邮箱</label><input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" /></div>
+              <div className="mb-3">
+                <label className={labelClass}>邮箱</label>
+                <div className="flex gap-2">
+                  <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                  {authMode === "register" && (
+                    <button onClick={sendCode} disabled={sendBusy || !email || codeCountdown > 0} className={btnGhost + " shrink-0 whitespace-nowrap"}>
+                      {sendBusy ? <Loader2 size={15} className="animate-spin" /> : null}
+                      {codeCountdown > 0 ? `${codeCountdown}s 后可重发` : "发送验证码"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {authMode === "register" && (
+                <div className="mb-3"><label className={labelClass}>邮箱验证码</label><input className={inputClass} inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="6 位数字，请查收邮件" /></div>
+              )}
               <div className="mb-3"><label className={labelClass}>密码</label><input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="至少 6 位" /></div>
-              <button onClick={submitAuth} disabled={authBusy || !email || password.length < 6} className={btnPrimary}>{authBusy ? <Loader2 size={15} className="animate-spin" /> : null}{authMode === "register" ? "注册并登录" : "登录"}</button>
-              <p className={hintClass}>模板版本地演示账号体系，正式版将接入邮箱验证码与加密存储。</p>
+              <button onClick={submitAuth} disabled={authBusy || !email || password.length < 6 || (authMode === "register" && code.length !== 6)} className={btnPrimary}>{authBusy ? <Loader2 size={15} className="animate-spin" /> : null}{authMode === "register" ? "注册并登录" : "登录"}</button>
+              <p className={hintClass}>注册分两步：先点「发送验证码」查收邮件，再填验证码与密码完成注册。验证码 10 分钟内有效，1 分钟内不可重发。</p>
+              <details className="mt-5 rounded-lg border border-[#e8ebe5] p-3">
+                <summary className="cursor-pointer text-sm font-medium text-[#24342b]">发信邮箱配置（SMTP，管理员填写一次）</summary>
+                <p className="mt-2 text-xs text-[#8a9a8e]">用于给注册用户发验证码。填 163 / QQ 邮箱后台生成的 SMTP「授权码」（不是登录密码），保存后存于本机 .local-data，不会写入仓库。163 邮箱路径：网页版设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 新增授权码。</p>
+                <div className="mt-3"><label className={labelClass}>发信邮箱</label><input className={inputClass} type="email" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="18654380225@163.com" /></div>
+                <div className="mb-1 mt-3"><label className={labelClass}>SMTP 授权码</label><input className={inputClass} type="password" value={smtpAuthCode} onChange={(e) => setSmtpAuthCode(e.target.value)} placeholder={smtpSaved ? `已保存（${smtpSaved.authCodeMasked}），留空则不修改` : "邮箱后台生成的授权码"} /></div>
+                <div className="mt-2"><label className={labelClass}>SMTP 服务器（可选，留空按邮箱后缀自动判断）</label><input className={inputClass} value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.163.com" /></div>
+                <button onClick={saveSmtp} disabled={smtpBusy || !smtpUser || !smtpAuthCode} className={btnPrimary + " mt-3"}>{smtpBusy ? <Loader2 size={15} className="animate-spin" /> : null}保存发信配置</button>
+                {smtpMsg && <p className={`mt-2 text-sm ${smtpMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{smtpMsg.text}</p>}
+                {smtpSaved && !smtpMsg && <p className="mt-2 text-xs text-[#8a9a8e]">当前发信邮箱：{smtpSaved.user}（授权码 {smtpSaved.authCodeMasked || "未配置"}）</p>}
+              </details>
             </div>
           )}
           {authMsg && <p className={`mt-3 text-sm ${authMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{authMsg.text}</p>}

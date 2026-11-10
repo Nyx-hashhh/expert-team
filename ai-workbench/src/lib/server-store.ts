@@ -114,6 +114,107 @@ export function addQuota(packId: string, amount: number): UsageState {
   return usage;
 }
 
+// ---------- SMTP 发信配置（邮箱验证码用） ----------
+// 授权码保存在 .local-data/smtp.json（不入 Git），也可用环境变量 SMTP_USER / SMTP_AUTH_CODE 兜底。
+
+export type SmtpSettings = {
+  host: string; // 留空时按发信邮箱后缀自动判断
+  port: number;
+  user: string; // 发信邮箱，如 18654380225@163.com
+  authCode: string; // 邮箱后台生成的 SMTP 授权码（不是登录密码）
+};
+
+const SMTP_FILE = "smtp.json";
+const SMTP_FALLBACK: SmtpSettings = { host: "", port: 465, user: "", authCode: "" };
+
+export function readSmtp(): SmtpSettings {
+  return readJson(SMTP_FILE, SMTP_FALLBACK);
+}
+
+export function writeSmtp(next: SmtpSettings) {
+  writeJson(SMTP_FILE, next);
+}
+
+// 合成最终生效配置：设置界面 > 环境变量；host 未填时按邮箱后缀给默认值
+export function getSmtpConfig(): SmtpSettings {
+  const saved = readSmtp();
+  const user = saved.user || process.env.SMTP_USER || "";
+  const authCode = saved.authCode || process.env.SMTP_AUTH_CODE || "";
+  let host = saved.host || process.env.SMTP_HOST || "";
+  const port = saved.port || Number(process.env.SMTP_PORT) || 465;
+  if (!host && user) {
+    if (user.endsWith("@163.com")) host = "smtp.163.com";
+    else if (user.endsWith("@126.com")) host = "smtp.126.com";
+    else if (user.endsWith("@qq.com")) host = "smtp.qq.com";
+    else if (user.endsWith("@foxmail.com")) host = "smtp.qq.com";
+  }
+  return { host, port, user, authCode };
+}
+
+// ---------- 邮箱验证码（注册用，只存哈希，带过期与重发限制） ----------
+
+export type EmailCodeRecord = {
+  codeHash: string;
+  sentAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+};
+
+export type EmailCodeStore = { codes: Record<string, EmailCodeRecord> };
+
+const CODES_FILE = "email-codes.json";
+const CODE_FALLBACK: EmailCodeStore = { codes: {} };
+
+export const CODE_TTL_MS = 10 * 60 * 1000; // 验证码 10 分钟有效
+export const CODE_RESEND_MS = 60 * 1000; // 60 秒内不允许重发
+
+function mailCodeHash(email: string, code: string): string {
+  return crypto.createHash("sha256").update(`${email}::${code}::zhixing-mail-code`).digest("hex");
+}
+
+// 生成 6 位数字验证码，落盘哈希；60 秒内重复调用抛 Error("SEND_TOO_FREQUENT")。
+// 返回的明文验证码仅供服务端发信使用，不返回给前端。
+export function createEmailCode(email: string): string {
+  const store = readJson(CODES_FILE, CODE_FALLBACK);
+  const key = email.toLowerCase();
+  const prev = store.codes[key];
+  if (prev && Date.now() - new Date(prev.sentAt).getTime() < CODE_RESEND_MS) {
+    throw new Error("SEND_TOO_FREQUENT");
+  }
+  const code = String(crypto.randomInt(100000, 999999));
+  const now = new Date();
+  store.codes[key] = {
+    codeHash: mailCodeHash(key, code),
+    sentAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + CODE_TTL_MS).toISOString(),
+    usedAt: null,
+  };
+  writeJson(CODES_FILE, store);
+  return code;
+}
+
+// 校验验证码：未过期、未使用、哈希一致。通过即作废（一次性使用）。
+export function verifyEmailCode(email: string, code: string): boolean {
+  const store = readJson(CODES_FILE, CODE_FALLBACK);
+  const key = email.toLowerCase();
+  const record = store.codes[key];
+  if (!record || record.usedAt) return false;
+  if (new Date(record.expiresAt).getTime() < Date.now()) return false;
+  if (record.codeHash !== mailCodeHash(key, code)) return false;
+  record.usedAt = new Date().toISOString();
+  writeJson(CODES_FILE, store);
+  return true;
+}
+
+// 发信失败时撤销刚生成的验证码，避免占用 60 秒重发窗口（用户填好授权码可立即重试）
+export function deleteEmailCode(email: string) {
+  const store = readJson(CODES_FILE, CODE_FALLBACK);
+  const key = email.toLowerCase();
+  if (!store.codes[key]) return;
+  delete store.codes[key];
+  writeJson(CODES_FILE, store);
+}
+
 // ---------- 用户（邮箱注册，模板版） ----------
 
 export type StoredUser = {

@@ -11,11 +11,36 @@ try {
     }
 
     # Explorer and Codex may keep an older PATH after Node.js is installed.
-    $env:Path = @(
+    # Agent-injected toolchains (e.g. .workbuddy\binaries) must be excluded first:
+    # their npm ships a safe-delete shim that aborts `npm ci` on bulk node_modules deletion,
+    # and the bundled Node version may be too old for some packages (html2canvas-pro needs >=24).
+    $pathEntries = @(
         $env:Path,
         [Environment]::GetEnvironmentVariable('Path', 'User'),
         [Environment]::GetEnvironmentVariable('Path', 'Machine')
-    ) -join ';'
+    ) | ForEach-Object { ($_ -split ';') } | Where-Object { $_ -and $_ -notlike '*\.workbuddy\binaries*' }
+    $env:Path = ($pathEntries | Select-Object -Unique) -join ';'
+
+    # 同一会话可能注入大小写重复的代理变量（HTTP_PROXY/http_proxy），
+    # 会让 Start-Process 抛「重复键」异常导致 dev server 静默失败。统一规范成一条。
+    $proxyGroups = @{
+        http_proxy  = @('HTTP_PROXY', 'http_proxy')
+        https_proxy = @('HTTPS_PROXY', 'https_proxy')
+        all_proxy   = @('ALL_PROXY', 'all_proxy')
+        no_proxy    = @('NO_PROXY', 'no_proxy')
+    }
+    foreach ($group in $proxyGroups.GetEnumerator()) {
+        $value = $null
+        foreach ($variant in $group.Value) {
+            $v = [Environment]::GetEnvironmentVariable($variant, 'Process')
+            if ($v) { if (-not $value) { $value = $v } }
+            [Environment]::SetEnvironmentVariable($variant, $null, 'Process')
+        }
+        if ($value) { [Environment]::SetEnvironmentVariable($group.Key, $value, 'Process') }
+    }
+    # 清除 agent 会话注入的 Node 全局项，避免影响 dev server 解析依赖
+    Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+    Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
 
     $npm = Get-Command npm.cmd -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     $nodeAlongsideNpm = if ($npm) { Join-Path (Split-Path $npm.Source -Parent) 'node.exe' } else { '' }
