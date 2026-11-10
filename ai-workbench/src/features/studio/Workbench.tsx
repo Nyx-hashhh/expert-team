@@ -7,6 +7,7 @@ import Link from "next/link";
 import enterprisesData from "@/data/enterprises.json";
 import { CONTRACT_VERSION, PLATFORM_LABELS, PLATFORMS, TRANSLATION_MODE_LABELS, type CreativeBrief, type Enterprise, type GenerateRequest, type GenerateResult, type Material, type MaterialType, type Platform, type ScheduleItem, type TranslateRequest, type TranslateResult, type TranslationMode, type Version } from "@/contracts/content";
 import { readLocal, writeLocal } from "@/lib/storage";
+import { authFetch, clearToken } from "@/lib/auth-client";
 import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { Button } from "@/components/ui/button";
 
@@ -88,9 +89,10 @@ export function Workbench() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 50000);
     try {
-      const response = await fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(translateRequest), signal: controller.signal });
+      const response = await authFetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(translateRequest), signal: controller.signal });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
+        if (response.status === 401) clearToken();
         throw new Error(payload?.error ?? "智能转译服务不可用");
       }
       const translated = await response.json() as TranslateResult;
@@ -161,9 +163,10 @@ export function Workbench() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 100000);
     try {
-      const response = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal: controller.signal });
+      const response = await authFetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal: controller.signal });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
+        if (response.status === 401) clearToken();
         throw new Error(payload?.error ?? "文案生成服务不可用");
       }
       const next = await response.json() as GenerateResult;

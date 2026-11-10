@@ -75,43 +75,154 @@ export function maskApiKey(key: string): string {
   return `${key.slice(0, 4)}••••••••${key.slice(-4)}`;
 }
 
-// ---------- 用量与充值（演示版） ----------
+// ---------- 用量与充值（按账号计费：登录用户独立额度，未登录共用游客额度） ----------
+// usage.json 顶层 used/quota 永远代表游客额度；登录用户的桶挂在 users[email] 下。
+// 旧版本文件没有 users 字段，经 readJson 的 fallback 合并自动补齐，老数据继续当游客额度用。
+
+export type UsageLogEntry = { time: string; kind: string; amount: number };
+
+export type UsageScope = { email: string | null };
+
+export type UserUsage = {
+  used: number;
+  quota: number;
+  log: UsageLogEntry[];
+  recharges: { time: string; packId: string; amount: number }[];
+};
 
 export type UsageState = {
   used: number;
   quota: number;
-  log: { time: string; kind: string; amount: number }[];
+  log: UsageLogEntry[];
   recharges: { time: string; packId: string; amount: number }[];
+  users: Record<string, UserUsage>;
 };
 
 const USAGE_FILE = "usage.json";
 const DEFAULT_QUOTA = 20;
-const USAGE_FALLBACK: UsageState = { used: 0, quota: DEFAULT_QUOTA, log: [], recharges: [] };
+const USAGE_FALLBACK: UsageState = { used: 0, quota: DEFAULT_QUOTA, log: [], recharges: [], users: {} };
+
+const emptyBucket = (): UserUsage => ({ used: 0, quota: DEFAULT_QUOTA, log: [], recharges: [] });
 
 export function readUsage(): UsageState {
   return readJson(USAGE_FILE, USAGE_FALLBACK);
 }
 
-export function hasQuota(): boolean {
-  const usage = readUsage();
-  return usage.used < usage.quota;
+export function resolveScope(email: string | null): UsageScope {
+  return { email: email ? email.toLowerCase() : null };
 }
 
-export function consumeUsage(kind: string, amount = 1): UsageState {
-  const usage = readUsage();
-  usage.used += amount;
-  usage.log.unshift({ time: new Date().toISOString(), kind, amount });
-  usage.log = usage.log.slice(0, 200);
-  writeJson(USAGE_FILE, usage);
-  return usage;
+// 取某个身份对应的额度桶：email 为空返回游客桶，否则取/建该邮箱的桶。
+// 游客桶是字段拷贝（number 无法按引用自增），落盘前用 commitBucket 回填。
+function bucketFor(state: UsageState, scope: UsageScope): UserUsage {
+  if (!scope.email) {
+    return { used: state.used, quota: state.quota, log: state.log, recharges: state.recharges };
+  }
+  const email = scope.email;
+  const existing = state.users[email];
+  if (existing) return existing;
+  const bucket = emptyBucket();
+  state.users[email] = bucket;
+  return bucket;
 }
 
-export function addQuota(packId: string, amount: number): UsageState {
-  const usage = readUsage();
-  usage.quota += amount;
-  usage.recharges.unshift({ time: new Date().toISOString(), packId, amount });
-  writeJson(USAGE_FILE, usage);
-  return usage;
+function commitBucket(state: UsageState, scope: UsageScope, bucket: UserUsage) {
+  if (!scope.email) {
+    state.used = bucket.used;
+    state.quota = bucket.quota;
+    state.log = bucket.log;
+    state.recharges = bucket.recharges;
+  }
+  writeJson(USAGE_FILE, state);
+}
+
+// 只读用途：取某身份当前的额度视图（新账号未产生消耗时返回默认桶，不落盘）
+export function usageFor(scope: UsageScope): UserUsage {
+  const state = readUsage();
+  return bucketFor(state, scope);
+}
+
+export function hasQuota(scope: UsageScope): boolean {
+  const bucket = usageFor(scope);
+  return bucket.used < bucket.quota;
+}
+
+// 402 文案：账号提示去充值；游客提示注册登录（充值本身要求登录）
+export function quotaExceededMessage(scope: UsageScope): string {
+  if (scope.email) return "该账号可用次数已用完，请前往「设置 → 用量与充值」充值后重试";
+  return "游客次数已用完。在「设置 → 账号登录」注册或登录后即可充值获取更多次数";
+}
+
+export function consumeUsage(scope: UsageScope, kind: string, amount = 1): UserUsage {
+  const state = readUsage();
+  const bucket = bucketFor(state, scope);
+  bucket.used += amount;
+  bucket.log.unshift({ time: new Date().toISOString(), kind, amount });
+  bucket.log = bucket.log.slice(0, 200);
+  commitBucket(state, scope, bucket);
+  return bucket;
+}
+
+export function addQuota(scope: UsageScope, packId: string, amount: number): UserUsage {
+  const state = readUsage();
+  const bucket = bucketFor(state, scope);
+  bucket.quota += amount;
+  bucket.recharges.unshift({ time: new Date().toISOString(), packId, amount });
+  commitBucket(state, scope, bucket);
+  return bucket;
+}
+
+// ---------- 充值订单（模拟支付：点充值先生成待支付订单，前端确认「模拟支付」后才到账） ----------
+
+export type OrderRecord = {
+  orderId: string;
+  email: string;
+  packId: string;
+  packName: string;
+  amount: number; // 充值次数
+  price: string; // 展示价格，如 ¥29
+  status: "pending" | "paid";
+  createdAt: string;
+  paidAt?: string;
+};
+
+const ORDERS_FILE = "orders.json";
+const ORDERS_FALLBACK = { orders: [] as OrderRecord[] };
+
+export function readOrders() {
+  return readJson(ORDERS_FILE, ORDERS_FALLBACK);
+}
+
+export function createOrder(email: string, pack: { id: string; name: string; amount: number; price: string }): OrderRecord {
+  const store = readOrders();
+  const order: OrderRecord = {
+    orderId: `ZHIXING${Date.now()}${crypto.randomInt(100, 1000)}`,
+    email: email.toLowerCase(),
+    packId: pack.id,
+    packName: pack.name,
+    amount: pack.amount,
+    price: pack.price,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+  store.orders.unshift(order);
+  store.orders = store.orders.slice(0, 200);
+  writeJson(ORDERS_FILE, store);
+  return order;
+}
+
+// 确认支付：校验归属后标 paid 并入账；对已支付订单幂等返回（不重复加额度）。
+export function payOrder(email: string, orderId: string): OrderRecord | "not-found" {
+  const store = readOrders();
+  const order = store.orders.find((item) => item.orderId === orderId);
+  if (!order || order.email !== email.toLowerCase()) return "not-found";
+  if (order.status !== "paid") {
+    order.status = "paid";
+    order.paidAt = new Date().toISOString();
+    writeJson(ORDERS_FILE, store);
+    addQuota(resolveScope(order.email), order.packId, order.amount);
+  }
+  return order;
 }
 
 // ---------- SMTP 发信配置（邮箱验证码用） ----------
@@ -264,4 +375,17 @@ export function destroySession(token: string) {
   const store = readUsers();
   delete store.sessions[token];
   writeUsers(store);
+}
+
+// ---------- 请求侧登录态解析（x-auth-token 头优先，兼容 ?token= 查询参数） ----------
+
+// null = 未携带 token（游客）；"expired" = 携带了 token 但会话不存在或已过期。
+export type SessionResolution = { email: string } | null | "expired";
+
+export function resolveRequestSession(request: Request): SessionResolution {
+  const token = request.headers.get("x-auth-token") || new URL(request.url).searchParams.get("token") || "";
+  if (!token) return null;
+  const session = resolveSession(token);
+  if (!session) return "expired";
+  return { email: session.email };
 }

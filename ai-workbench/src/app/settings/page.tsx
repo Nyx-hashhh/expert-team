@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, BadgeCheck, CircleAlert, CreditCard, KeyRound, Loader2, LogOut, Plug, RefreshCcw, Trash2, UserRound } from "lucide-react";
+import { authFetch, clearToken, getToken, setToken } from "@/lib/auth-client";
 
 type TabKey = "account" | "api" | "billing" | "general";
 
@@ -12,12 +13,26 @@ type SettingsPayload = {
 };
 
 type UsagePayload = {
+  account: string | null; // 当前额度归属账号；null = 游客额度
   used: number;
   quota: number;
   remaining: number;
   recentLog: { time: string; kind: string; amount: number }[];
   recharges: { time: string; packId: string; amount: number }[];
+  orders: OrderPayload[];
   packs: { id: string; name: string; price: string; amount: number }[];
+};
+
+type OrderPayload = {
+  orderId: string;
+  email: string;
+  packId: string;
+  packName: string;
+  amount: number;
+  price: string;
+  status: "pending" | "paid";
+  createdAt: string;
+  paidAt?: string;
 };
 
 const TABS: { key: TabKey; label: string; icon: typeof UserRound }[] = [
@@ -71,7 +86,9 @@ export default function SettingsPage() {
 
   // —— 充值 ——
   const [rechargeBusy, setRechargeBusy] = useState("");
-  const [rechargeMsg, setRechargeMsg] = useState<string | null>(null);
+  const [rechargeMsg, setRechargeMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<OrderPayload | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
 
   const loadSettings = useCallback(async () => {
     const res = await fetch("/api/settings");
@@ -87,19 +104,25 @@ export default function SettingsPage() {
   }, []);
 
   const loadUsage = useCallback(async () => {
-    const res = await fetch("/api/usage");
-    if (res.ok) setUsage((await res.json()) as UsagePayload);
+    const res = await authFetch("/api/usage");
+    if (!res.ok) {
+      // token 已失效：清掉残留登录态，回落到游客额度视图
+      if (res.status === 401) { clearToken(); setUser(null); }
+      return;
+    }
+    setUsage((await res.json()) as UsagePayload);
   }, []);
 
   useEffect(() => {
     loadSettings();
     loadUsage();
     // 无论是否登录都拉取一次：顺便拿发信邮箱配置状态（只含掩码）
-    const token = window.localStorage.getItem("传播工作台:v1:auth-token");
+    const token = getToken();
     fetch(`/api/auth?token=${encodeURIComponent(token ?? "")}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.user) setUser(data.user);
+        else if (token) clearToken();
         if (data.smtp?.user) {
           setSmtpSaved({ user: data.smtp.user, authCodeMasked: data.smtp.authCodeMasked ?? "" });
           if (data.smtp.user) setSmtpUser(data.smtp.user);
@@ -167,9 +190,10 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) { setAuthMsg({ ok: false, text: data.error ?? "操作失败" }); return; }
-      window.localStorage.setItem("传播工作台:v1:auth-token", data.token);
+      setToken(data.token);
       setUser({ email: data.user.email });
       setAuthMsg({ ok: true, text: authMode === "register" ? "注册成功，已自动登录" : "登录成功" });
+      loadUsage(); // 切到该账号的额度视图
     } catch {
       setAuthMsg({ ok: false, text: "网络异常，请重试" });
     } finally {
@@ -178,11 +202,14 @@ export default function SettingsPage() {
   }
 
   async function logout() {
-    const token = window.localStorage.getItem("传播工作台:v1:auth-token");
+    const token = getToken();
     if (token) await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout", token }) }).catch(() => {});
-    window.localStorage.removeItem("传播工作台:v1:auth-token");
+    clearToken();
     setUser(null);
     setAuthMsg(null);
+    setPendingOrder(null);
+    setRechargeMsg(null); // 登出后清掉上一账号的到账提示，避免误读到游客视图
+    loadUsage(); // 回到游客额度
   }
 
   async function saveSettings() {
@@ -224,22 +251,45 @@ export default function SettingsPage() {
     }
   }
 
-  async function recharge(packId: string) {
+  // 第一步：创建待支付订单（要求已登录，额度计入当前账号）
+  async function startRecharge(packId: string) {
     setRechargeBusy(packId);
     setRechargeMsg(null);
     try {
-      const res = await fetch("/api/usage", {
+      const res = await authFetch("/api/usage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId }),
+        body: JSON.stringify({ action: "create-order", packId }),
       });
       const data = await res.json();
-      setRechargeMsg(res.ok ? data.message : data.error ?? "充值失败");
-      if (res.ok) loadUsage();
+      if (!res.ok) { setRechargeMsg({ ok: false, text: data.error ?? "创建订单失败" }); return; }
+      setPendingOrder(data.order as OrderPayload);
     } catch {
-      setRechargeMsg("网络异常，请重试");
+      setRechargeMsg({ ok: false, text: "网络异常，请重试" });
     } finally {
       setRechargeBusy("");
+    }
+  }
+
+  // 第二步：确认模拟支付后才真正到账
+  async function confirmMockPay() {
+    if (!pendingOrder) return;
+    setPayBusy(true);
+    try {
+      const res = await authFetch("/api/usage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mock-pay", orderId: pendingOrder.orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setRechargeMsg({ ok: false, text: data.error ?? "模拟支付失败" }); return; }
+      setRechargeMsg({ ok: true, text: data.message });
+      setPendingOrder(null);
+      loadUsage();
+    } catch {
+      setRechargeMsg({ ok: false, text: "网络异常，请重试" });
+    } finally {
+      setPayBusy(false);
     }
   }
 
@@ -348,12 +398,20 @@ export default function SettingsPage() {
       {tab === "billing" && usage && (
         <section className={cardClass}>
           <h2 className="mb-4 text-base font-semibold text-[#24342b]">用量与充值</h2>
+          <div className={`mb-4 flex items-start gap-2 rounded-lg border px-4 py-2.5 text-sm ${user ? "border-[#cfe3d4] bg-[#f2f8f3] text-[#24342b]" : "border-[#e8ebe5] bg-[#f7f8f5] text-[#8a9a8e]"}`}>
+            <BadgeCheck size={16} className={`mt-0.5 shrink-0 ${user ? "text-[#3c6b4c]" : "text-[#b7c2b9]"}`} />
+            {user ? (
+              <span>当前账号 <strong>{user.email}</strong>，用量与充值均计入该账号。</span>
+            ) : (
+              <span>当前使用游客额度（全站共享的体验次数）。登录账号后，充值将计入你的账号，<button onClick={() => setTab("account")} className="text-[#3c6b4c] hover:underline">去登录 →</button></span>
+            )}
+          </div>
           <div className="mb-2 flex items-baseline justify-between text-sm text-[#24342b]">
             <span>已使用 <strong>{usage.used}</strong> / {usage.quota} 次</span>
             <span className="text-[#8a9a8e]">剩余 {usage.remaining} 次</span>
           </div>
           <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#f7f8f5]"><div className="h-full rounded-full bg-[#3c6b4c]" style={{ width: `${usedPct}%` }} /></div>
-          {usage.remaining <= 3 && <p className="mt-2 flex items-center gap-1.5 text-xs text-[#c0392b]"><CircleAlert size={14} /> 次数即将用尽，生成将被限制，请及时充值。</p>}
+          {usage.remaining <= 3 && <p className="mt-2 flex items-center gap-1.5 text-xs text-[#c0392b]"><CircleAlert size={14} /> {user ? "次数即将用尽，生成将被限制，请及时充值。" : "游客次数即将用尽，生成将被限制；登录后可充值获取更多次数。"}</p>}
           <h3 className="mb-3 mt-6 text-sm font-semibold text-[#24342b]">充值套餐</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {usage.packs.map((pack) => (
@@ -361,12 +419,22 @@ export default function SettingsPage() {
                 <div className="text-sm font-semibold text-[#24342b]">{pack.name}</div>
                 <div className="my-1 text-xl font-bold text-[#3c6b4c]">{pack.price}</div>
                 <div className="mb-3 text-xs text-[#8a9a8e]">{pack.amount} 次生成额度</div>
-                <button onClick={() => recharge(pack.id)} disabled={rechargeBusy === pack.id} className={btnPrimary + " w-full justify-center"}>{rechargeBusy === pack.id ? <Loader2 size={15} className="animate-spin" /> : null}立即充值</button>
+                <button onClick={() => startRecharge(pack.id)} disabled={rechargeBusy === pack.id || !user || !!pendingOrder} className={btnPrimary + " w-full justify-center"}>{rechargeBusy === pack.id ? <Loader2 size={15} className="animate-spin" /> : null}{user ? "立即充值" : "登录后可充值"}</button>
               </div>
             ))}
           </div>
-          {rechargeMsg && <p className="mt-3 text-sm text-[#3c6b4c]">{rechargeMsg}</p>}
-          <p className={hintClass}>半成品说明：演示环境点击充值直接到账，未接入真实支付；正式版将接入微信支付并按账号计费。</p>
+          {pendingOrder && (
+            <div className="mt-4 rounded-lg border border-[#cfe3d4] bg-[#f2f8f3] p-4">
+              <div className="text-sm font-semibold text-[#24342b]">待支付订单：{pendingOrder.orderId}</div>
+              <p className="mt-1 text-xs text-[#8a9a8e]">{pendingOrder.packName} · {pendingOrder.price} · 充值 {pendingOrder.amount} 次 → 计入 {pendingOrder.email}</p>
+              <div className="mt-3 flex gap-2">
+                <button onClick={confirmMockPay} disabled={payBusy} className={btnPrimary}>{payBusy ? <Loader2 size={15} className="animate-spin" /> : null}模拟支付（演示）</button>
+                <button onClick={() => setPendingOrder(null)} disabled={payBusy} className={btnGhost}>取消</button>
+              </div>
+            </div>
+          )}
+          {rechargeMsg && <p className={`mt-3 text-sm ${rechargeMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{rechargeMsg.text}</p>}
+          <p className={hintClass}>演示流程：点「立即充值」生成待支付订单，点「模拟支付」后到账（未接真实支付；正式版将接入微信支付）。额度计入当前登录账号。</p>
           {usage.recentLog.length > 0 && (
             <>
               <h3 className="mb-2 mt-6 text-sm font-semibold text-[#24342b]">最近消耗记录</h3>
