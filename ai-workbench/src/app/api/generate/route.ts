@@ -4,7 +4,7 @@ import { buildRuntimeGenerationInstruction } from "@/data/copywriting-runtime";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult, type Platform, type PlatformVersions, type TranslationMode } from "@/contracts/content";
 import { createLlmClient } from "@/lib/llm-client";
-import { consumeUsage, getLlmConfig, hasQuota } from "@/lib/server-store";
+import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
 
 const creativeBriefSchema = z.object({
   mode: z.enum(["story", "seed", "brand"]), audience: z.string(), coreMessage: z.string(), storyAngle: z.string(), hook: z.string(),
@@ -66,7 +66,10 @@ export async function POST(request: Request) {
   const playbook = getTranslationPlaybook(mode);
   const { apiKey, baseURL, model } = getLlmConfig("generate");
   if (!apiKey) return Response.json({ error: "未配置文案生成 API：请前往「设置 → API 配置」填写 API 密钥" }, { status: 503 });
-  if (!hasQuota()) return Response.json({ error: "可用次数已用完，请前往「设置 → 用量与充值」充值后重试" }, { status: 402 });
+  const session = resolveRequestSession(request);
+  if (session === "expired") return Response.json({ error: "登录已过期，请重新登录" }, { status: 401 });
+  const scope = resolveScope(session?.email ?? null);
+  if (!hasQuota(scope)) return Response.json({ error: quotaExceededMessage(scope) }, { status: 402 });
 
   const selected = input.selectedMaterials.filter((item) => input.selectedMaterialIds.includes(item.id));
   const userPayload = { enterprise: { name: enterprise.name, industry: enterprise.industry, location: enterprise.location, tagline: enterprise.tagline }, selectedMaterials: selected, goal: input.goal, tone: input.tone, translationMode: input.translationMode, creativeBrief: input.creativeBrief };
@@ -114,8 +117,8 @@ export async function POST(request: Request) {
     return Response.json({ error: `部分平台生成失败（${failures.length}/${input.platforms.length}），请重试` }, { status: 502 });
   }
   const platforms = Object.fromEntries(settled.map((item) => item.status === "fulfilled" ? item.value : [])) as Partial<Record<Platform, PlatformVersions>>;
-  // 只对成功消耗次数（演示计费：成功一次扣一次）
-  const usage = consumeUsage("generate", 1);
+  // 只对成功消耗次数（演示计费：成功一次扣一次，登录用户记在账号名下）
+  const usage = consumeUsage(scope, "generate", 1);
   console.log(`[usage] 生成成功，已用 ${usage.used}/${usage.quota} 次`);
   const result: GenerateResult = { contractVersion: CONTRACT_VERSION, enterpriseId: enterprise.id, source: "ai", platforms };
   return Response.json(result);
