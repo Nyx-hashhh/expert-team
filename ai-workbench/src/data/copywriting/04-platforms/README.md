@@ -3,6 +3,7 @@
 平台层负责信息结构、内容长度、视觉关系和互动方式。它不能改变核心事实，也不能替代叙事模式。
 
 - [小红书](xiaohongshu.md)
+  - [小红书爆款案例档案](xiaohongshu-cases.md)（写作参照，非平台规则）
 - [微博](weibo.md)
 - [抖音](douyin.md)
 - [Reddit](reddit.md)
