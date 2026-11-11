@@ -1,4 +1,4 @@
-# 06｜组合写作
+# 05｜组合写作
 
 - [组合顺序与冲突处理](composition-order.md)
 - [跨维度写作规则](integrated-writing-rules.md)
