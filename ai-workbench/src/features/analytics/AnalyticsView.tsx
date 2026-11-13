@@ -9,8 +9,6 @@ const trendSeries = [
   { key: "xiaohongshu", name: "小红书", color: "#85aa88" },
   { key: "weibo", name: "微博", color: "#ddb184" },
   { key: "douyin", name: "抖音", color: "#7f9ba1" },
-  { key: "reddit", name: "Reddit", color: "#ff7043" },
-  { key: "discord", name: "Discord", color: "#6574d9" },
   { key: "instagram", name: "IG / Facebook", color: "#6f69bd" },
   { key: "tiktok", name: "TikTok", color: "#2f3437" },
 ] as const;

@@ -1,6 +1,6 @@
 export const CONTRACT_VERSION = 1 as const;
 
-export type Platform = "xiaohongshu" | "weibo" | "douyin" | "reddit" | "discord" | "instagram" | "tiktok";
+export type Platform = "xiaohongshu" | "weibo" | "douyin" | "instagram" | "tiktok";
 export type Version = "A" | "B";
 export type MaterialType = "product" | "story" | "reference";
 export type TranslationMode = "story" | "seed" | "brand";
@@ -107,14 +107,12 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   xiaohongshu: "小红书",
   weibo: "微博",
   douyin: "抖音脚本",
-  reddit: "Reddit",
-  discord: "Discord",
   // `instagram` 保留为兼容旧数据的内部键；界面将它作为 IG / Facebook 联合发布平台展示。
   instagram: "IG / Facebook",
   tiktok: "TikTok",
 };
 
-export const PLATFORMS: Platform[] = ["xiaohongshu", "weibo", "douyin", "reddit", "discord", "instagram", "tiktok"];
+export const PLATFORMS: Platform[] = ["xiaohongshu", "weibo", "douyin", "instagram", "tiktok"];
 
 export const TRANSLATION_MODE_LABELS: Record<TranslationMode, { name: string; description: string }> = {
   story: { name: "故事型", description: "用文学化五幕与真实案例呈现卖点" },

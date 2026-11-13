@@ -566,8 +566,6 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
     case "xiaohongshu": return <XiaohongshuPreview content={content} enterprise={enterprise} slide={interaction.slide} onSlideChange={interaction.onSlideChange} liked={interaction.liked} collected={interaction.collected} likeCount={interaction.likeCount} collectCount={interaction.collectCount} burstKey={interaction.burstKey} onLike={interaction.onLike} onCollect={interaction.onCollect} />;
     case "weibo": return <WeiboPreview content={content} enterprise={enterprise} repostCount={interaction.repostCount} commentCount={interaction.commentCount} likeCount={interaction.likeCount} />;
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
-    case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
-    case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
     case "instagram": return <MetaJointPreview key={enterprise.id} content={content} enterprise={enterprise} interaction={interaction} />;
     case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
   }
@@ -740,17 +738,6 @@ function DouyinPreview({ content, enterprise, activeShot, playing, liked, likeCo
       <div className="hashtags">{content.hashtags.join("  ")}</div>
     </div>
   );
-}
-
-function RedditPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  const language = previewLanguage(content, enterprise);
-  return <div className="reddit-shell" lang={language === "zh" ? "zh-CN" : "en"}><div className="reddit-bar"><strong>reddit</strong><span>r/smallbusiness</span><button>{language === "zh" ? "加入" : "Join"}</button></div><div className="reddit-post"><aside><button>▲</button><strong>128</strong><button>▼</button></aside><article><div className="reddit-meta"><span className="reddit-community">r/smallbusiness</span> · {language === "zh" ? `由 u/${enterprise.name.replaceAll(" ", "_")} 发布 · 刚刚` : `Posted by u/${enterprise.name.replaceAll(" ", "_")} · just now`}</div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.feedHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="reddit-flairs">{content.hashtags.map((tag) => <span key={tag}>{tag}</span>)}</div><footer><span><MessageCircle size={14} /> {language === "zh" ? "24 条评论" : "24 Comments"}</span><span><Share2 size={14} /> {language === "zh" ? "分享" : "Share"}</span><span>•••</span></footer></article></div></div>;
-}
-
-function DiscordPreview({ content, enterprise }: { content: ContentVersion; enterprise: Enterprise }) {
-  const language = previewLanguage(content, enterprise);
-  const channel = language === "zh" ? "# 公告" : "# announcements";
-  return <div className="discord-shell" lang={language === "zh" ? "zh-CN" : "en"}><aside><span className="discord-home">D</span><span>{enterprise.name.slice(0, 1)}</span><span>+</span></aside><div className="discord-main"><header><strong>{channel}</strong><small>{language === "zh" ? "官方消息、新品发布与社群动态" : "Official news, launches and community updates"}</small></header><div className="discord-thread"><div className="discord-date"><span>{language === "zh" ? "2026年11月4日" : "November 4, 2026"}</span></div><div className="discord-message"><span className="discord-avatar">{enterprise.name.slice(0, 1)}</span><div><div className="discord-author"><strong>{enterprise.name}</strong><span>{language === "zh" ? "应用" : "APP"}</span><small>{language === "zh" ? "今天 9:41" : "Today at 9:41 AM"}</small></div><h3>{content.title}</h3>{DEMO_HEROES[enterprise.id] && <div className={previewCss.discordHero}><DemoHero enterprise={enterprise} language={language} /></div>}<p>{content.body}</p><div className="discord-tags">{content.hashtags.join("  ")}</div><div className="discord-reactions"><span>🌿 18</span><span>✨ 12</span><span>＋</span></div></div></div></div><div className="discord-input">{language === "zh" ? `发送消息至 ${channel}` : `Message ${channel}`} <span>☺</span></div></div></div>;
 }
 
 function InstagramPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {

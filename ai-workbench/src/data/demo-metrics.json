@@ -1,21 +1,19 @@
 {
   "trend": [
-    { "day": "周一", "xiaohongshu": 320, "weibo": 210, "douyin": 180, "reddit": 95, "discord": 78, "instagram": 150, "tiktok": 205 },
-    { "day": "周二", "xiaohongshu": 410, "weibo": 245, "douyin": 240, "reddit": 120, "discord": 92, "instagram": 190, "tiktok": 260 },
-    { "day": "周三", "xiaohongshu": 380, "weibo": 310, "douyin": 360, "reddit": 138, "discord": 116, "instagram": 245, "tiktok": 335 },
-    { "day": "周四", "xiaohongshu": 520, "weibo": 275, "douyin": 410, "reddit": 166, "discord": 132, "instagram": 280, "tiktok": 390 },
-    { "day": "周五", "xiaohongshu": 610, "weibo": 340, "douyin": 550, "reddit": 195, "discord": 158, "instagram": 355, "tiktok": 510 },
-    { "day": "周六", "xiaohongshu": 730, "weibo": 385, "douyin": 680, "reddit": 248, "discord": 186, "instagram": 440, "tiktok": 645 },
-    { "day": "周日", "xiaohongshu": 890, "weibo": 420, "douyin": 790, "reddit": 285, "discord": 224, "instagram": 520, "tiktok": 760 }
+    { "day": "周一", "xiaohongshu": 320, "weibo": 210, "douyin": 180, "instagram": 150, "tiktok": 205 },
+    { "day": "周二", "xiaohongshu": 410, "weibo": 245, "douyin": 240, "instagram": 190, "tiktok": 260 },
+    { "day": "周三", "xiaohongshu": 380, "weibo": 310, "douyin": 360, "instagram": 245, "tiktok": 335 },
+    { "day": "周四", "xiaohongshu": 520, "weibo": 275, "douyin": 410, "instagram": 280, "tiktok": 390 },
+    { "day": "周五", "xiaohongshu": 610, "weibo": 340, "douyin": 550, "instagram": 355, "tiktok": 510 },
+    { "day": "周六", "xiaohongshu": 730, "weibo": 385, "douyin": 680, "instagram": 440, "tiktok": 645 },
+    { "day": "周日", "xiaohongshu": 890, "weibo": 420, "douyin": 790, "instagram": 520, "tiktok": 760 }
   ],
   "platforms": [
-    { "name": "小红书", "value": 24, "color": "#85aa88" },
-    { "name": "微博", "value": 14, "color": "#ddb184" },
-    { "name": "抖音", "value": 20, "color": "#7f9ba1" },
-    { "name": "Reddit", "value": 9, "color": "#ff7043" },
-    { "name": "Discord", "value": 7, "color": "#6574d9" },
-    { "name": "IG / Facebook", "value": 12, "color": "#6f69bd" },
-    { "name": "TikTok", "value": 14, "color": "#2f3437" }
+    { "name": "小红书", "value": 22, "color": "#85aa88" },
+    { "name": "微博", "value": 24, "color": "#ddb184" },
+    { "name": "抖音", "value": 24, "color": "#7f9ba1" },
+    { "name": "IG / Facebook", "value": 14, "color": "#6f69bd" },
+    { "name": "TikTok", "value": 16, "color": "#2f3437" }
   ],
   "hashtags": [
     { "tag": "#宝藏品牌", "count": 82 },

@@ -29,30 +29,6 @@ const MOCK_FONT_SCALE_CSS = `
 .mockType .script-section h4{font-size:calc(11px*var(--mk))!important}
 .mockType .shot>span,.mockType .shot strong{font-size:calc(10px*var(--mk))!important}
 .mockType .shot small{font-size:calc(9px*var(--mk))!important}
-/* Reddit */
-.mockType .reddit-bar strong{font-size:calc(17px*var(--mk))!important}
-.mockType .reddit-bar span{font-size:calc(10px*var(--mk))!important}
-.mockType .reddit-bar button{font-size:calc(9px*var(--mk))!important}
-.mockType .reddit-post aside strong{font-size:calc(9px*var(--mk))!important}
-.mockType .reddit-post aside button{font-size:calc(13px*var(--mk))!important}
-.mockType .reddit-meta{font-size:calc(8px*var(--mk))!important}
-.mockType .reddit-post h3{font-size:calc(15px*var(--mk))!important}
-.mockType .reddit-post p{font-size:calc(10px*var(--mk))!important}
-.mockType .reddit-flairs span{font-size:calc(8px*var(--mk))!important}
-.mockType .reddit-post footer{font-size:calc(9px*var(--mk))!important}
-/* Discord */
-.mockType .discord-shell>aside span{font-size:calc(11px*var(--mk))!important}
-.mockType .discord-main>header strong{font-size:calc(11px*var(--mk))!important}
-.mockType .discord-main>header small{font-size:calc(8px*var(--mk))!important}
-.mockType .discord-date{font-size:calc(8px*var(--mk))!important}
-.mockType .discord-author strong{font-size:calc(11px*var(--mk))!important}
-.mockType .discord-author span{font-size:calc(6px*var(--mk))!important}
-.mockType .discord-author small{font-size:calc(7px*var(--mk))!important}
-.mockType .discord-message h3{font-size:calc(12px*var(--mk))!important}
-.mockType .discord-message p{font-size:calc(9px*var(--mk))!important}
-.mockType .discord-tags{font-size:calc(8px*var(--mk))!important}
-.mockType .discord-reactions span{font-size:calc(8px*var(--mk))!important}
-.mockType .discord-input{font-size:calc(9px*var(--mk))!important}
 /* Instagram */
 .mockType .instagram-head strong{font-size:calc(17px*var(--mk))!important}
 .mockType .instagram-head span{font-size:calc(15px*var(--mk))!important}
