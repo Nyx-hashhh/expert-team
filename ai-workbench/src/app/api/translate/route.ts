@@ -2,7 +2,7 @@ import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, type Enterprise, type TranslateRequest, type TranslateResult } from "@/contracts/content";
-import { creativeBriefSchema, CREATIVE_BRIEF_FIELD_LIMITS, CREATIVE_BRIEF_LIMIT_INSTRUCTION, CREATIVE_BRIEF_TOTAL_LIMIT } from "@/lib/creative-brief";
+import { fitCreativeBriefToLimits, CREATIVE_BRIEF_LIMIT_INSTRUCTION } from "@/lib/creative-brief";
 import { createLlmClient } from "@/lib/llm-client";
 import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
 
@@ -15,6 +15,13 @@ const requestSchema = z.object({
   goal: z.string().trim().min(1).max(2000),
   tone: z.string().trim().min(1).max(80),
   mode: z.enum(["story", "seed", "brand"]),
+});
+const briefCandidateSchema = z.object({
+  mode: z.enum(["story", "seed", "brand"]),
+  audience: z.string().trim().min(1),
+  coreMessage: z.string().trim().min(1),
+  storyAngle: z.string().trim().min(1),
+  hook: z.string().trim().min(1),
 });
 
 function parseBrief(raw: string, mode: TranslateRequest["mode"]): TranslateResult["brief"] {
@@ -29,7 +36,7 @@ function parseBrief(raw: string, mode: TranslateRequest["mode"]): TranslateResul
   }
   // mode 由用户在前端选定，避免模型在该字段追加说明导致无谓失败
   if (json && typeof json === "object" && !Array.isArray(json)) (json as Record<string, unknown>).mode = mode;
-  return creativeBriefSchema.parse(json);
+  return fitCreativeBriefToLimits(briefCandidateSchema.parse(json));
 }
 
 export async function POST(request: Request) {
@@ -49,39 +56,34 @@ export async function POST(request: Request) {
   const scope = resolveScope(session?.email ?? null);
   if (!hasQuota(scope)) return Response.json({ error: quotaExceededMessage(scope) }, { status: 402 });
 
-  // 前端 50 秒即中止：最多两次 16s 请求，第一次输出超限或格式错误时，
-  // 第二次专门压缩修复；关闭 SDK 内层重试，保证最坏情况仍落在前端预算内。
+  // 前端 50 秒即中止：最多两次 16s 请求；正常的超长输出在本地直接压缩，
+  // 只有空正文或 JSON 结构损坏才重试，避免为字数问题多等一轮模型。
   const client = createLlmClient({ apiKey, baseURL, timeoutMs: 16000, maxRetries: 0 });
   try {
     const systemPrompt = `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。${CREATIVE_BRIEF_LIMIT_INSTRUCTION} 只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。不写解释或多余字段。`;
     const sourcePayload = { enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials };
     let brief: TranslateResult["brief"] | null = null;
-    let previousOutput = "";
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= 2; attempt++) {
       const userContent = attempt === 1
         ? JSON.stringify(sourcePayload)
         : JSON.stringify({
-          task: "上一版格式或字数不合格。保留原意，压缩后重新输出完整 JSON。",
-          limits: { ...CREATIVE_BRIEF_FIELD_LIMITS, total: CREATIVE_BRIEF_TOTAL_LIMIT },
+          task: "上一轮没有返回可解析的完整 JSON。请按规定字段重新输出。",
           source: sourcePayload,
-          previousOutput,
         });
       try {
         const completion = await client.chat.completions.create({
           model,
           response_format: { type: "json_object" },
           reasoning_effort: "low",
-          max_tokens: 320,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userContent },
           ],
         });
         const raw = completion.choices[0]?.message?.content;
-        if (!raw) throw new Error("模型未返回内容");
-        previousOutput = raw;
+        if (!raw) throw new Error(`模型未返回正文（finish_reason=${completion.choices[0]?.finish_reason ?? "unknown"}）`);
         brief = parseBrief(raw, input.mode);
         break;
       } catch (error) {
@@ -90,8 +92,8 @@ export async function POST(request: Request) {
       }
     }
     if (!brief) {
-      console.error("[translate] 两次输出均不合格：", lastError, "最后输出头300字=", previousOutput.slice(0, 300));
-      return Response.json({ error: "模型未能把四项思路压缩到规定字数，请重试" }, { status: 502 });
+      console.error("[translate] 两次输出均无可用正文：", lastError);
+      return Response.json({ error: "模型未返回可用的转译内容，请重试" }, { status: 502 });
     }
     // 只对成功消耗次数（演示计费：成功一次扣一次，登录用户记在账号名下）
     const usage = consumeUsage(scope, "translate", 1);
