@@ -17,6 +17,13 @@
 - 种草型：用轮播展示使用前提、步骤、细节、适配与边界。
 - 品牌型：以稳定视觉母题持续展示产地、研发、工艺或社群资产。
 
+## Product names and model numbers
+
+- Let the product name appear naturally in an action or scene, usually no more than once.
+- Never write catalog-style lines such as “The model is…”, “SKU…”, or “Product name: …”.
+- Keep model numbers, SKUs, item codes, and internal identifiers in the product image, shopping tag, alt text when needed for accessibility, or source material—not in the title, Caption, or hashtags.
+- Include an identifier only when the user explicitly asks to distinguish several easily confused variants and no natural name, size, shade, version, or use case can do the job. Put it once in parentheses at the end of the Caption.
+
 ## Reels 脚本钩子库（前3秒）
 
 Instagram官方与行业数据显示63%的高表现视频在前3秒完成钩子；Reels算法重仓保存（saves）与分享（shares），钩子要「值得收藏」而不只是「想看完」。五类钩子任选其一：
@@ -65,6 +72,6 @@ Instagram官方与行业数据显示63%的高表现视频在前3秒完成钩子�
 
 ## 注意事项
 
-文字不能重复画面；语言应符合目标市场；视觉美感不得掩盖证据不足或把摆拍当作真实体验。
+文字不能重复画面；语言应符合目标市场；视觉美感不得掩盖证据不足或把摆拍当作真实体验。发布前删除所有不影响理解的型号、SKU与内部编码。
 
 案例数据为公开报道口径，统计时点不同会有差异；方法论用于学习，不复制原句台词。
