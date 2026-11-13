@@ -14,7 +14,7 @@
     { "name": "抖音", "value": 20, "color": "#7f9ba1" },
     { "name": "Reddit", "value": 9, "color": "#ff7043" },
     { "name": "Discord", "value": 7, "color": "#6574d9" },
-    { "name": "Instagram", "value": 12, "color": "#c65d9b" },
+    { "name": "IG / Facebook", "value": 12, "color": "#6f69bd" },
     { "name": "TikTok", "value": 14, "color": "#2f3437" }
   ],
   "hashtags": [

@@ -109,7 +109,8 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   douyin: "抖音脚本",
   reddit: "Reddit",
   discord: "Discord",
-  instagram: "Instagram",
+  // `instagram` 保留为兼容旧数据的内部键；界面将它作为 IG / Facebook 联合发布平台展示。
+  instagram: "IG / Facebook",
   tiktok: "TikTok",
 };
 

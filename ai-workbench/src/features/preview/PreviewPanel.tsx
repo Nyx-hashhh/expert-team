@@ -568,9 +568,29 @@ function PlatformPreview({ platform, content, enterprise, interaction }: { platf
     case "douyin": return <DouyinPreview content={content} enterprise={enterprise} activeShot={interaction.activeShot} playing={interaction.playing} liked={interaction.liked} likeCount={interaction.likeCount} commentCount={interaction.commentCount} shareCount={interaction.shareCount} onShotChange={interaction.onShotChange} onTogglePlay={interaction.onTogglePlay} onLike={interaction.onLike} />;
     case "reddit": return <RedditPreview content={content} enterprise={enterprise} />;
     case "discord": return <DiscordPreview content={content} enterprise={enterprise} />;
-    case "instagram": return <InstagramPreview key={enterprise.id} content={content} enterprise={enterprise} interaction={interaction} />;
+    case "instagram": return <MetaJointPreview key={enterprise.id} content={content} enterprise={enterprise} interaction={interaction} />;
     case "tiktok": return <TikTokPreview content={content} enterprise={enterprise} />;
   }
+}
+
+function MetaJointPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
+  const [surface, setSurface] = useState<"instagram" | "facebook">("instagram");
+
+  return <div className={previewCss.metaJointPreview}>
+    <div className={previewCss.metaJointHeader}>
+      <div>
+        <strong>IG / Facebook</strong>
+        <small>Meta 联合发布 · 两端共用同一文案与素材</small>
+      </div>
+      <div className={previewCss.metaSurfaceTabs} role="tablist" aria-label="切换联合发布预览界面">
+        <button type="button" role="tab" aria-selected={surface === "instagram"} className={surface === "instagram" ? previewCss.metaSurfaceActive : ""} onClick={() => setSurface("instagram")}>IG 预览</button>
+        <button type="button" role="tab" aria-selected={surface === "facebook"} className={surface === "facebook" ? previewCss.metaSurfaceActive : ""} onClick={() => setSurface("facebook")}>Facebook 预览</button>
+      </div>
+    </div>
+    {surface === "instagram"
+      ? <InstagramPreview content={content} enterprise={enterprise} interaction={interaction} />
+      : <FacebookPreview content={content} enterprise={enterprise} interaction={interaction} />}
+  </div>;
 }
 
 function XiaohongshuPreview({ content, enterprise, slide, onSlideChange, liked, collected, likeCount, collectCount, burstKey, onLike, onCollect }: {
@@ -762,6 +782,48 @@ function InstagramPreview({ content, enterprise, interaction }: { content: Conte
       <button type="button" className={`${previewCss.igMetric} ${previewCss.igBookmarkMetric}`} onClick={interaction.onCollect} aria-label={`${isChinese ? "收藏" : "Save"} ${interaction.collectCount + Number(interaction.collected)}`} aria-pressed={interaction.collected}><Bookmark fill={interaction.collected ? "currentColor" : "none"} aria-hidden="true" />{formatInstagramCount(interaction.collectCount + Number(interaction.collected))}</button>
     </div>
     <div className="instagram-caption"><p><b>{enterprise.name.replaceAll(" ", "").toLowerCase()}</b> {content.body}</p><div>{content.hashtags.join(" ")}</div><small>{isChinese ? `查看全部 ${formatInstagramCount(interaction.commentCount)} 条评论 · 刚刚` : `View all ${formatInstagramCount(interaction.commentCount)} comments · just now`}</small></div>
+  </div>;
+}
+
+function FacebookPreview({ content, enterprise, interaction }: { content: ContentVersion; enterprise: Enterprise; interaction: PreviewInteraction }) {
+  const language = previewLanguage(content, enterprise);
+  const isChinese = language === "zh";
+  const location = previewLocation(enterprise, language);
+  const accountName = enterprise.name.replaceAll(" ", "");
+
+  return <div className={previewCss.facebookShell} lang={isChinese ? "zh-CN" : "en"}>
+    <div className={previewCss.facebookTopbar}>
+      <strong aria-label="Facebook">f</strong>
+      <span>{isChinese ? "帖子预览" : "Post preview"}</span>
+      <span aria-hidden="true">•••</span>
+    </div>
+    <article className={previewCss.facebookPost}>
+      <header className={previewCss.facebookProfile}>
+        <span className={previewCss.facebookAvatar} style={{ background: `linear-gradient(135deg, ${enterprise.accent}, #edc77a)` }}>{enterprise.name.slice(0, 1)}</span>
+        <div><strong>{enterprise.name}</strong><small>{isChinese ? "刚刚" : "Just now"} · <Globe2 size={10} aria-label={isChinese ? "公开" : "Public"} /></small></div>
+        <button type="button" aria-label={isChinese ? "更多选项" : "More options"}>•••</button>
+      </header>
+      <div className={previewCss.facebookCopy}>
+        <p>{content.body}</p>
+        <div>{content.hashtags.join(" ")}</div>
+      </div>
+      <div className={previewCss.facebookHero} style={{ background: `linear-gradient(145deg, ${enterprise.accent}, #d9c7a4 70%, #f3ead7)` }}>
+        {DEMO_HEROES[enterprise.id] && <><DemoHero enterprise={enterprise} language={language} creditClassName={previewCss.facebookHeroCredit} /><div className={previewCss.facebookHeroShade} /></>}
+        <div className={previewCss.facebookHeroText}>{location && <small>{location}</small>}<strong>{content.title}</strong></div>
+      </div>
+      <div className={previewCss.facebookMeta}>
+        <span><i>♥</i> {formatCount(interaction.likeCount)}</span>
+        <span>{formatCount(interaction.commentCount)} {isChinese ? "条评论" : "comments"} · {formatCount(interaction.shareCount)} {isChinese ? "次分享" : "shares"}</span>
+      </div>
+      <div className={previewCss.facebookActions}>
+        <button type="button" aria-pressed={interaction.liked} onClick={interaction.onLike} className={interaction.liked ? previewCss.facebookActionActive : ""}><Heart size={16} fill={interaction.liked ? "currentColor" : "none"} />{isChinese ? "赞" : "Like"}</button>
+        <button type="button"><MessageCircle size={16} />{isChinese ? "评论" : "Comment"}</button>
+        <button type="button"><Share2 size={16} />{isChinese ? "分享" : "Share"}</button>
+      </div>
+      <div className={previewCss.facebookComment}>
+        <span>{accountName.slice(0, 1)}</span><div><strong>{accountName}</strong><small>{isChinese ? "欢迎留言了解更多信息。" : "Leave a comment to learn more."}</small></div>
+      </div>
+    </article>
   </div>;
 }
 

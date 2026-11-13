@@ -16,14 +16,14 @@ const isDevelopment = process.env.NODE_ENV === "development";
 const accentPresets = ["#7caa87", "#caa278", "#e7a45d", "#9bb8bd", "#b7a58f", "#a48fb5"];
 const typeLabels: Record<MaterialType, string> = { product: "产品参数", story: "品牌故事", reference: "参考文案" };
 const tones = ["闺蜜安利", "专业品鉴", "年轻活力", "温暖叙事"];
-const platformMarks: Record<Platform, string> = { xiaohongshu: "小", weibo: "微", douyin: "抖", reddit: "r/", discord: "D", instagram: "IG", tiktok: "♪" };
+const platformMarks: Record<Platform, string> = { xiaohongshu: "小", weibo: "微", douyin: "抖", reddit: "r/", discord: "D", instagram: "IG / f", tiktok: "♪" };
 const platformDescriptions: Record<Platform, string> = {
   xiaohongshu: "生活化种草",
   weibo: "短平快快讯",
   douyin: "黄金 3 秒口播",
   reddit: "社区讨论帖",
   discord: "社群公告互动",
-  instagram: "视觉故事 Caption",
+  instagram: "Meta 联合发布 · 同文案双预览",
   tiktok: "短视频脚本 · 跟随诉求语言",
 };
 
