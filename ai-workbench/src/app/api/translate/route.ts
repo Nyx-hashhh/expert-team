@@ -2,6 +2,7 @@ import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, type Enterprise, type TranslateRequest, type TranslateResult } from "@/contracts/content";
+import { creativeBriefSchema, CREATIVE_BRIEF_FIELD_LIMITS, CREATIVE_BRIEF_LIMIT_INSTRUCTION, CREATIVE_BRIEF_TOTAL_LIMIT } from "@/lib/creative-brief";
 import { createLlmClient } from "@/lib/llm-client";
 import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
 
@@ -15,13 +16,21 @@ const requestSchema = z.object({
   tone: z.string().trim().min(1).max(80),
   mode: z.enum(["story", "seed", "brand"]),
 });
-const briefSchema = z.object({
-  mode: z.enum(["story", "seed", "brand"]),
-  audience: z.string().min(1),
-  coreMessage: z.string().min(1),
-  storyAngle: z.string().min(1),
-  hook: z.string().min(1),
-});
+
+function parseBrief(raw: string, mode: TranslateRequest["mode"]): TranslateResult["brief"] {
+  let json: unknown;
+  try { json = JSON.parse(raw); }
+  catch {
+    // 模型偶发在 JSON 外包一层 markdown 代码块，截取花括号内容兜底
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("invalid json");
+    json = JSON.parse(raw.slice(start, end + 1));
+  }
+  // mode 由用户在前端选定，避免模型在该字段追加说明导致无谓失败
+  if (json && typeof json === "object" && !Array.isArray(json)) (json as Record<string, unknown>).mode = mode;
+  return creativeBriefSchema.parse(json);
+}
 
 export async function POST(request: Request) {
   let input: TranslateRequest;
@@ -40,39 +49,49 @@ export async function POST(request: Request) {
   const scope = resolveScope(session?.email ?? null);
   if (!hasQuota(scope)) return Response.json({ error: quotaExceededMessage(scope) }, { status: 402 });
 
-  // 前端 50 秒即中止：单次 16s + 最多 1 次重试 ≈ 33s，保证最坏情况也落在前端预算内，
-  // 避免供应商卡顿时整段请求挂满重试链条，让用户对着加载圈干等
-  const client = createLlmClient({ apiKey, baseURL, timeoutMs: 16000, maxRetries: 1 });
+  // 前端 50 秒即中止：最多两次 16s 请求，第一次输出超限或格式错误时，
+  // 第二次专门压缩修复；关闭 SDK 内层重试，保证最坏情况仍落在前端预算内。
+  const client = createLlmClient({ apiKey, baseURL, timeoutMs: 16000, maxRetries: 0 });
   try {
-    const completion = await client.chat.completions.create({
-      model,
-      response_format: { type: "json_object" },
-      reasoning_effort: "low",
-      messages: [
-        { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。每项都用一句具体、可执行的中文表述，不写解释或多余字段。` },
-        { role: "user", content: JSON.stringify({ enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials }) },
-      ],
-    });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return Response.json({ error: "模型未返回内容，请重试" }, { status: 502 });
-    let brief: TranslateResult["brief"];
-    try {
-      let json: unknown;
-      try { json = JSON.parse(raw); }
-      catch {
-        // 模型偶发在 JSON 外包一层 markdown 代码块，截取花括号内容兜底
-        const start = raw.indexOf("{");
-        const end = raw.lastIndexOf("}");
-        if (start < 0 || end <= start) throw new Error("invalid json");
-        json = JSON.parse(raw.slice(start, end + 1));
+    const systemPrompt = `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。${CREATIVE_BRIEF_LIMIT_INSTRUCTION} 只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。不写解释或多余字段。`;
+    const sourcePayload = { enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials };
+    let brief: TranslateResult["brief"] | null = null;
+    let previousOutput = "";
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const userContent = attempt === 1
+        ? JSON.stringify(sourcePayload)
+        : JSON.stringify({
+          task: "上一版格式或字数不合格。保留原意，压缩后重新输出完整 JSON。",
+          limits: { ...CREATIVE_BRIEF_FIELD_LIMITS, total: CREATIVE_BRIEF_TOTAL_LIMIT },
+          source: sourcePayload,
+          previousOutput,
+        });
+      try {
+        const completion = await client.chat.completions.create({
+          model,
+          response_format: { type: "json_object" },
+          reasoning_effort: "low",
+          max_tokens: 320,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+        });
+        const raw = completion.choices[0]?.message?.content;
+        if (!raw) throw new Error("模型未返回内容");
+        previousOutput = raw;
+        brief = parseBrief(raw, input.mode);
+        break;
+      } catch (error) {
+        lastError = error;
+        console.error(`[translate] 第 ${attempt} 次输出未通过格式与字数校验：`, String(error).slice(0, 500));
       }
-      // 部分模型会把解释文字写进 mode 字段导致校验失败；mode 本就由用户在前端选定，直接回填请求里的值
-      if (json && typeof json === "object" && !Array.isArray(json)) (json as Record<string, unknown>).mode = input.mode;
-      brief = briefSchema.parse(json);
     }
-    catch (error) {
-      console.error("[translate] 模型返回内容解析失败：", error, "finish_reason=", completion.choices[0]?.finish_reason, "usage=", JSON.stringify(completion.usage), "raw头300字=", raw.slice(0, 300), "raw尾200字=", raw.slice(-200));
-      return Response.json({ error: "模型返回内容不符合约定格式，请重试" }, { status: 502 });
+    if (!brief) {
+      console.error("[translate] 两次输出均不合格：", lastError, "最后输出头300字=", previousOutput.slice(0, 300));
+      return Response.json({ error: "模型未能把四项思路压缩到规定字数，请重试" }, { status: 502 });
     }
     // 只对成功消耗次数（演示计费：成功一次扣一次，登录用户记在账号名下）
     const usage = consumeUsage(scope, "translate", 1);
