@@ -3,12 +3,9 @@ import enterprisesData from "@/data/enterprises.json";
 import { buildRuntimeGenerationInstruction } from "@/data/copywriting-runtime";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult, type Platform, type PlatformVersions, type TranslationMode } from "@/contracts/content";
+import { creativeBriefSchema } from "@/lib/creative-brief";
 import { createLlmClient } from "@/lib/llm-client";
 import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
-
-const creativeBriefSchema = z.object({
-  mode: z.enum(["story", "seed", "brand"]), audience: z.string(), coreMessage: z.string(), storyAngle: z.string(), hook: z.string(),
-});
 
 const requestSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
