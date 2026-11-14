@@ -34,6 +34,19 @@ const platformPairSchema = z.object({ A: versionSchema, B: versionSchema });
 const CHINESE_PLATFORMS: Platform[] = ["xiaohongshu", "weibo", "douyin"];
 const STORYBOARD_PLATFORMS: Platform[] = ["douyin", "tiktok"];
 
+function countContentBlocks(body: string): number {
+  return body.trim().split(/\r?\n[ \t]*\r?\n+/).filter((block) => block.trim().length > 0).length;
+}
+
+function assertXiaohongshuBlockCount(pair: PlatformVersions): void {
+  for (const version of ["A", "B"] as const) {
+    const count = countContentBlocks(pair[version].body);
+    if (count < 3 || count > 4) {
+      throw new Error(`xiaohongshu ${version}版正文必须为3–4个空行分隔的内容区块，当前为${count}个`);
+    }
+  }
+}
+
 // 模型偶发会在 JSON 外包一层 markdown 代码块，先直解再截取花括号内容兜底
 function parseLenient(raw: string): unknown {
   try { return JSON.parse(raw); } catch { /* 继续尝试截取 */ }
@@ -51,7 +64,7 @@ function platformSystemPrompt(enterprise: Enterprise, mode: TranslationMode, ton
   const storyboardSkeleton = STORYBOARD_PLATFORMS.includes(platform)
     ? '，两版各再增加 "storyboard": [{"timeRange": "…", "shot": "…", "voiceover": "…", "bgm": "…"}]'
     : "";
-  return `你是中小企业多平台传播策划。${runtimeInstruction} 本次目标平台：${platform}。${langRule}品牌名、地名和平台固有名称可保留专名；除用户明确要求外，不要把另一种语言的素材原文直接拼入句子，应自然转述。不得捏造事实、人物、数据、功效、用户评价、排名或实时热榜。只输出一个合法 JSON 对象，结构固定为：{"A": {"title": "…", "body": "…", "hashtags": ["…"]}, "B": {"title": "…", "body": "…", "hashtags": ["…"]}}${storyboardSkeleton}。顶层键仅使用 A 和 B，A、B 的值必须是对象而不是数组。`;
+  return `你是中小企业多平台传播策划。${runtimeInstruction} 本次目标平台：${platform}。${langRule}品牌名、地名和平台固有名称可保留专名；除用户明确要求外，不要把另一种语言的素材原文直接拼入句子，应自然转述。不得捏造产品事实、客观效果、数据、功效、认证、用户评价、排名或实时热榜；可以创作合理的普通人物、生活动作、购买过程、对话和主观感受来组织叙事，但不能把创作经历当作真实背书或证据。只输出一个合法 JSON 对象，结构固定为：{"A": {"title": "…", "body": "…", "hashtags": ["…"]}, "B": {"title": "…", "body": "…", "hashtags": ["…"]}}${storyboardSkeleton}。顶层键仅使用 A 和 B，A、B 的值必须是对象而不是数组。`;
 }
 
 export async function POST(request: Request) {
@@ -101,6 +114,7 @@ export async function POST(request: Request) {
           if (Array.isArray(json[key])) json[key] = (json[key] as unknown[]).find((item) => item && typeof item === "object") ?? (json[key] as unknown[])[0];
         }
         const pair = platformPairSchema.parse(json);
+        if (platform === "xiaohongshu") assertXiaohongshuBlockCount(pair);
         return [platform, { A: pair.A, B: pair.B }];
       } catch (error) {
         lastError = error;

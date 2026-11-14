@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       response_format: { type: "json_object" },
       reasoning_effort: "low",
       messages: [
-        { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 必须严格依据企业素材，不得虚构人物、经历、使用效果、数据、功效、排名或用户评价。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。每项都用一句具体、可执行的中文表述，不写解释或多余字段。` },
+        { role: "system", content: `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 产品事实、客观效果、数据、功效、认证、排名和用户评价必须严格依据企业素材；可以设计合理的普通人物、生活动作、购买过程、对话和主观感受作为创作叙事，但不能把它们当作事实证据或真实用户背书。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。每项都用一句具体、可执行的中文表述，不写解释或多余字段。` },
         { role: "user", content: JSON.stringify({ enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials }) },
       ],
     });
