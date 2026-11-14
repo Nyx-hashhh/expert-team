@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { connection } from "next/server";
-import { getLlmConfig, maskApiKey, readSettings, writeSettings } from "@/lib/server-store";
+import { getLlmConfig, readSettings, writeSettings } from "@/lib/server-store";
+import { privateHeaders, requireAdmin } from "@/lib/admin-auth";
 
 const bodySchema = z.object({
   apiKey: z.string().max(400),
@@ -10,14 +11,15 @@ const bodySchema = z.object({
   translateModel: z.string().max(120),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
+  const denied = requireAdmin(request);
+  if (denied) return denied;
   const saved = readSettings();
   const active = getLlmConfig("generate");
   return Response.json({
     llm: {
-      // 不回传完整密钥，只回传掩码；保存时若提交的是掩码或空值则视为「未修改」
-      apiKeyMasked: maskApiKey(saved.llm.apiKey || process.env.LLM_API_KEY || ""),
+      apiKeyConfigured: Boolean(saved.llm.apiKey || process.env.LLM_API_KEY || process.env.GENERATE_LLM_API_KEY),
       hasEnvKey: Boolean(process.env.LLM_API_KEY || process.env.GENERATE_LLM_API_KEY),
       baseURL: saved.llm.baseURL,
       model: saved.llm.model,
@@ -25,19 +27,20 @@ export async function GET() {
       translateModel: saved.llm.translateModel,
       updatedAt: saved.updatedAt,
     },
-    active: { apiKeyMasked: maskApiKey(active.apiKey), baseURL: active.baseURL ?? "", model: active.model },
-  });
+    active: { apiKeyConfigured: Boolean(active.apiKey), baseURL: active.baseURL ?? "", model: active.model },
+  }, { headers: privateHeaders });
 }
 
 export async function POST(request: Request) {
+  const denied = requireAdmin(request, true);
+  if (denied) return denied;
   let input: z.infer<typeof bodySchema>;
   try { input = bodySchema.parse(await request.json()); }
   catch { return Response.json({ error: "设置内容格式不正确" }, { status: 400 }); }
 
   const previous = readSettings().llm;
-  // 提交掩码（未修改）或空值时保留原有密钥；否则写入新密钥
-  const isMasked = input.apiKey.includes("••••");
-  const apiKey = isMasked || !input.apiKey ? previous.apiKey : input.apiKey.trim();
+  // Empty means keep the configured secret, including an environment fallback.
+  const apiKey = input.apiKey.trim() || previous.apiKey || process.env.LLM_API_KEY || process.env.GENERATE_LLM_API_KEY || "";
 
   writeSettings({
     apiKey,
@@ -48,5 +51,5 @@ export async function POST(request: Request) {
   });
 
   const active = getLlmConfig("generate");
-  return Response.json({ ok: true, active: { apiKeyMasked: maskApiKey(active.apiKey), model: active.model } });
+  return Response.json({ ok: true, active: { apiKeyConfigured: Boolean(active.apiKey), model: active.model } }, { headers: privateHeaders });
 }

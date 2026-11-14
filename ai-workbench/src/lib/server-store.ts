@@ -3,29 +3,55 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import os from "node:os";
 
-const DATA_DIR = path.join(process.cwd(), ".local-data");
+// Keep runtime data outside the checkout so replacing the application does not erase it.
+const DATA_DIR = process.env.WORKBENCH_DATA_DIR || path.join(os.homedir(), ".zhixing-workbench");
+const LEGACY_DIR = path.join(process.cwd(), ".local-data");
+const LEGACY_FILES = ["settings.json", "smtp.json", "email-codes.json", "users.json", "usage.json", "orders.json"];
+let migrated = false;
 
 function ensureDir() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+  if (migrated) return;
+  if (process.env.WORKBENCH_SKIP_LEGACY_MIGRATION === "1") { migrated = true; return; }
+  // Copy only missing files. Leave the old directory intact as the migration backup.
+  for (const file of LEGACY_FILES) {
+    const source = path.join(LEGACY_DIR, file);
+    const target = path.join(/* turbopackIgnore: true */ DATA_DIR, file);
+    if (source !== target && fs.existsSync(/* turbopackIgnore: true */ source) && !fs.existsSync(/* turbopackIgnore: true */ target)) {
+      fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
+      fs.chmodSync(target, 0o600);
+    }
+  }
+  migrated = true;
 }
 
 function readJson<T>(file: string, fallback: T): T {
+  ensureDir();
   try {
     const raw = fs.readFileSync(path.join(DATA_DIR, file), "utf-8");
     return { ...fallback, ...(JSON.parse(raw) as T) };
-  } catch {
-    return fallback;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return fallback;
+    throw error;
   }
 }
 
 function writeJson(file: string, value: unknown) {
   ensureDir();
   const target = path.join(DATA_DIR, file);
-  const tmp = `${target}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf-8");
-  fs.renameSync(tmp, target);
+  const tmp = `${target}.${crypto.randomBytes(6).toString("hex")}.tmp`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(value, null, 2), { encoding: "utf-8", mode: 0o600 });
+    fs.renameSync(tmp, target);
+  } finally {
+    if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+  }
 }
+
+export function readPrivateJson<T>(file: string, fallback: T): T { return readJson(file, fallback); }
+export function writePrivateJson(file: string, value: unknown): void { writeJson(file, value); }
 
 // ---------- LLM 设置 ----------
 
@@ -226,12 +252,12 @@ export function payOrder(email: string, orderId: string): OrderRecord | "not-fou
 }
 
 // ---------- SMTP 发信配置（邮箱验证码用） ----------
-// 授权码保存在 .local-data/smtp.json（不入 Git），也可用环境变量 SMTP_USER / SMTP_AUTH_CODE 兜底。
+// 授权码保存在服务端持久目录，也可用环境变量 SMTP_USER / SMTP_AUTH_CODE 兜底。
 
 export type SmtpSettings = {
   host: string; // 留空时按发信邮箱后缀自动判断
   port: number;
-  user: string; // 发信邮箱，如 18654380225@163.com
+  user: string; // 发信邮箱
   authCode: string; // 邮箱后台生成的 SMTP 授权码（不是登录密码）
 };
 

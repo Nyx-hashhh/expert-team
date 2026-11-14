@@ -5,11 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, BadgeCheck, CircleAlert, CreditCard, KeyRound, Loader2, LogOut, Plug, RefreshCcw, Trash2, UserRound } from "lucide-react";
 import { authFetch, clearToken, getToken, setToken } from "@/lib/auth-client";
 
-type TabKey = "account" | "api" | "billing" | "general";
+type TabKey = "account" | "admin" | "api" | "billing" | "general";
 
 type SettingsPayload = {
-  llm: { apiKeyMasked: string; hasEnvKey: boolean; baseURL: string; model: string; generateModel: string; translateModel: string; updatedAt: string };
-  active: { apiKeyMasked: string; baseURL: string; model: string };
+  llm: { apiKeyConfigured: boolean; hasEnvKey: boolean; baseURL: string; model: string; generateModel: string; translateModel: string; updatedAt: string };
+  active: { apiKeyConfigured: boolean; baseURL: string; model: string };
 };
 
 type UsagePayload = {
@@ -37,6 +37,7 @@ type OrderPayload = {
 
 const TABS: { key: TabKey; label: string; icon: typeof UserRound }[] = [
   { key: "account", label: "账号登录", icon: UserRound },
+  { key: "admin", label: "管理员", icon: KeyRound },
   { key: "api", label: "API 配置", icon: KeyRound },
   { key: "billing", label: "用量与充值", icon: CreditCard },
   { key: "general", label: "通用", icon: RefreshCcw },
@@ -50,7 +51,7 @@ const btnGhost = "inline-flex items-center gap-2 rounded-lg border border-[#e8eb
 const cardClass = "rounded-xl border border-[#e8ebe5] bg-white p-6";
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<TabKey>("api");
+  const [tab, setTab] = useState<TabKey>("account");
   const [settings, setSettings] = useState<SettingsPayload | null>(null);
   const [usage, setUsage] = useState<UsagePayload | null>(null);
 
@@ -65,11 +66,20 @@ export default function SettingsPage() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authMsg, setAuthMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const [admin, setAdmin] = useState(false);
+  const [adminConfigured, setAdminConfigured] = useState(true);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [adminMsg, setAdminMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [adminBusy, setAdminBusy] = useState(false);
+
   // —— 发信邮箱（SMTP）——
-  const [smtpUser, setSmtpUser] = useState("18654380225@163.com");
+  const [smtpUser, setSmtpUser] = useState("");
   const [smtpAuthCode, setSmtpAuthCode] = useState("");
   const [smtpHost, setSmtpHost] = useState("");
-  const [smtpSaved, setSmtpSaved] = useState<{ user: string; authCodeMasked: string } | null>(null);
+  const [smtpPort, setSmtpPort] = useState(465);
+  const [smtpSaved, setSmtpSaved] = useState(false);
   const [smtpBusy, setSmtpBusy] = useState(false);
   const [smtpMsg, setSmtpMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -92,6 +102,7 @@ export default function SettingsPage() {
 
   const loadSettings = useCallback(async () => {
     const res = await fetch("/api/settings");
+    if (res.status === 401) { setAdmin(false); setSettings(null); return; }
     if (res.ok) {
       const data = (await res.json()) as SettingsPayload;
       setSettings(data);
@@ -99,7 +110,20 @@ export default function SettingsPage() {
       setModel(data.llm.model || "");
       setGenerateModel(data.llm.generateModel || "");
       setTranslateModel(data.llm.translateModel || "");
-      setApiKey(data.llm.apiKeyMasked || "");
+      setApiKey("");
+    }
+  }, []);
+
+  const loadSmtp = useCallback(async () => {
+    const res = await fetch("/api/admin/smtp");
+    if (res.status === 401) { setAdmin(false); setSmtpSaved(false); return; }
+    if (res.ok) {
+      const data = await res.json();
+      setSmtpUser(data.user || "");
+      setSmtpHost(data.host || "");
+      setSmtpPort(data.port || 465);
+      setSmtpSaved(Boolean(data.authCodeConfigured));
+      setSmtpAuthCode("");
     }
   }, []);
 
@@ -114,22 +138,21 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    loadSettings();
-    loadUsage();
-    // 无论是否登录都拉取一次：顺便拿发信邮箱配置状态（只含掩码）
+    void Promise.resolve().then(loadUsage);
+    fetch("/api/admin/session").then((res) => res.json()).then((data) => {
+      setAdminConfigured(Boolean(data.configured));
+      setAdmin(Boolean(data.authenticated));
+      if (data.authenticated) { loadSettings(); loadSmtp(); }
+    }).catch(() => {});
     const token = getToken();
     fetch(`/api/auth?token=${encodeURIComponent(token ?? "")}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.user) setUser(data.user);
         else if (token) clearToken();
-        if (data.smtp?.user) {
-          setSmtpSaved({ user: data.smtp.user, authCodeMasked: data.smtp.authCodeMasked ?? "" });
-          if (data.smtp.user) setSmtpUser(data.smtp.user);
-        }
       })
       .catch(() => {});
-  }, [loadSettings, loadUsage]);
+  }, [loadSettings, loadSmtp, loadUsage]);
 
   // 验证码 60 秒重发倒计时
   useEffect(() => {
@@ -162,21 +185,63 @@ export default function SettingsPage() {
     setSmtpBusy(true);
     setSmtpMsg(null);
     try {
-      const res = await fetch("/api/auth", {
+      const res = await fetch("/api/admin/smtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save-smtp", user: smtpUser, authCode: smtpAuthCode, host: smtpHost || undefined }),
+        body: JSON.stringify({ user: smtpUser, authCode: smtpAuthCode, host: smtpHost, port: smtpPort }),
       });
       const data = await res.json();
       if (!res.ok) { setSmtpMsg({ ok: false, text: data.error ?? "保存失败" }); return; }
-      setSmtpSaved({ user: data.smtp.user, authCodeMasked: data.smtp.authCodeMasked });
+      setSmtpSaved(true);
       setSmtpAuthCode("");
-      setSmtpMsg({ ok: true, text: "发信邮箱配置已保存（存于本机 .local-data，不入仓库）" });
+      setSmtpMsg({ ok: true, text: "发信邮箱配置已保存" });
     } catch {
       setSmtpMsg({ ok: false, text: "网络异常，请重试" });
     } finally {
       setSmtpBusy(false);
     }
+  }
+
+  async function adminLogin() {
+    setAdminBusy(true);
+    setAdminMsg(null);
+    try {
+      const res = await fetch("/api/admin/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: adminPassword }) });
+      const data = await res.json();
+      if (!res.ok) { setAdminMsg({ ok: false, text: data.error ?? "登录失败" }); return; }
+      setAdminPassword("");
+      setAdmin(true);
+      setAdminMsg({ ok: true, text: "管理员已登录" });
+      await Promise.all([loadSettings(), loadSmtp()]);
+    } catch { setAdminMsg({ ok: false, text: "网络异常，请重试" }); }
+    finally { setAdminBusy(false); }
+  }
+
+  async function adminLogout() {
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => {});
+    setAdmin(false);
+    setSettings(null);
+    setSmtpSaved(false);
+    setSmtpUser("");
+    setSmtpHost("");
+    setSmtpAuthCode("");
+    setApiKey("");
+    setTab("admin");
+  }
+
+  async function updateAdminPassword() {
+    setAdminBusy(true);
+    setAdminMsg(null);
+    try {
+      const res = await fetch("/api/admin/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: currentAdminPassword, newPassword: newAdminPassword }) });
+      const data = await res.json();
+      if (!res.ok) { setAdminMsg({ ok: false, text: data.error ?? "修改失败" }); return; }
+      setCurrentAdminPassword("");
+      setNewAdminPassword("");
+      await adminLogout();
+      setAdminMsg({ ok: true, text: "口令已修改，请重新登录" });
+    } catch { setAdminMsg({ ok: false, text: "网络异常，请重试" }); }
+    finally { setAdminBusy(false); }
   }
 
   async function submitAuth() {
@@ -223,7 +288,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (!res.ok) { setSaveMsg({ ok: false, text: data.error ?? "保存失败" }); return; }
-      setSaveMsg({ ok: true, text: `已保存，当前生效模型：${data.active.model}（密钥 ${data.active.apiKeyMasked || "未配置"}）` });
+      setSaveMsg({ ok: true, text: `已保存，当前生效模型：${data.active.model}（密钥${data.active.apiKeyConfigured ? "已配置" : "未配置"}）` });
       loadSettings();
     } catch {
       setSaveMsg({ ok: false, text: "网络异常，请重试" });
@@ -357,27 +422,46 @@ export default function SettingsPage() {
               <div className="mb-3"><label className={labelClass}>密码</label><input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="至少 6 位" /></div>
               <button onClick={submitAuth} disabled={authBusy || !email || password.length < 6 || (authMode === "register" && code.length !== 6)} className={btnPrimary}>{authBusy ? <Loader2 size={15} className="animate-spin" /> : null}{authMode === "register" ? "注册并登录" : "登录"}</button>
               <p className={hintClass}>注册分两步：先点「发送验证码」查收邮件，再填验证码与密码完成注册。验证码 10 分钟内有效，1 分钟内不可重发。</p>
-              <details className="mt-5 rounded-lg border border-[#e8ebe5] p-3">
-                <summary className="cursor-pointer text-sm font-medium text-[#24342b]">发信邮箱配置（SMTP，管理员填写一次）</summary>
-                <p className="mt-2 text-xs text-[#8a9a8e]">用于给注册用户发验证码。填 163 / QQ 邮箱后台生成的 SMTP「授权码」（不是登录密码），保存后存于本机 .local-data，不会写入仓库。163 邮箱路径：网页版设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 新增授权码。</p>
-                <div className="mt-3"><label className={labelClass}>发信邮箱</label><input className={inputClass} type="email" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="18654380225@163.com" /></div>
-                <div className="mb-1 mt-3"><label className={labelClass}>SMTP 授权码</label><input className={inputClass} type="password" value={smtpAuthCode} onChange={(e) => setSmtpAuthCode(e.target.value)} placeholder={smtpSaved ? `已保存（${smtpSaved.authCodeMasked}），留空则不修改` : "邮箱后台生成的授权码"} /></div>
-                <div className="mt-2"><label className={labelClass}>SMTP 服务器（可选，留空按邮箱后缀自动判断）</label><input className={inputClass} value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.163.com" /></div>
-                <button onClick={saveSmtp} disabled={smtpBusy || !smtpUser || !smtpAuthCode} className={btnPrimary + " mt-3"}>{smtpBusy ? <Loader2 size={15} className="animate-spin" /> : null}保存发信配置</button>
-                {smtpMsg && <p className={`mt-2 text-sm ${smtpMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{smtpMsg.text}</p>}
-                {smtpSaved && !smtpMsg && <p className="mt-2 text-xs text-[#8a9a8e]">当前发信邮箱：{smtpSaved.user}（授权码 {smtpSaved.authCodeMasked || "未配置"}）</p>}
-              </details>
             </div>
           )}
           {authMsg && <p className={`mt-3 text-sm ${authMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{authMsg.text}</p>}
         </section>
       )}
 
-      {tab === "api" && (
+      {tab === "admin" && (
+        <section className={cardClass}>
+          <h2 className="mb-4 text-base font-semibold text-[#24342b]">管理员设置</h2>
+          {!admin ? (
+            <div>
+              <p className={hintClass}>{adminConfigured ? "输入管理员口令后可查看和修改发信与模型配置。" : "管理员尚未初始化，请在本机运行 npm run admin:init。"}</p>
+              <div className="mb-3 mt-4"><label className={labelClass}>管理员口令</label><input className={inputClass} type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") adminLogin(); }} /></div>
+              <button onClick={adminLogin} disabled={adminBusy || !adminPassword || !adminConfigured} className={btnPrimary}>管理员登录</button>
+            </div>
+          ) : (
+            <div>
+              <div className="mb-5 flex items-center justify-between"><span className="text-sm text-[#3c6b4c]">管理员已登录</span><button onClick={adminLogout} className={btnGhost}><LogOut size={15} /> 退出管理员</button></div>
+              <h3 className="mb-3 text-sm font-semibold text-[#24342b]">发信邮箱配置</h3>
+              <div className="mb-3"><label className={labelClass}>发信邮箱</label><input className={inputClass} type="email" value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} /></div>
+              <div className="mb-3"><label className={labelClass}>SMTP 服务器（留空按邮箱后缀判断）</label><input className={inputClass} value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} /></div>
+              <div className="mb-3"><label className={labelClass}>端口</label><input className={inputClass} type="number" min={1} max={65535} value={smtpPort} onChange={(e) => setSmtpPort(Number(e.target.value))} /></div>
+              <div className="mb-3"><label className={labelClass}>SMTP 授权码</label><input className={inputClass} type="password" value={smtpAuthCode} onChange={(e) => setSmtpAuthCode(e.target.value)} placeholder={smtpSaved ? "已配置；留空则保留" : "首次保存时填写"} /></div>
+              <button onClick={saveSmtp} disabled={smtpBusy || !smtpUser || (!smtpSaved && !smtpAuthCode)} className={btnPrimary}>保存发信配置</button>
+              {smtpMsg && <p className={`mt-2 text-sm ${smtpMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{smtpMsg.text}</p>}
+              <h3 className="mb-3 mt-8 text-sm font-semibold text-[#24342b]">修改管理员口令</h3>
+              <div className="mb-3"><label className={labelClass}>当前口令</label><input className={inputClass} type="password" value={currentAdminPassword} onChange={(e) => setCurrentAdminPassword(e.target.value)} /></div>
+              <div className="mb-3"><label className={labelClass}>新口令（至少 8 位）</label><input className={inputClass} type="password" value={newAdminPassword} onChange={(e) => setNewAdminPassword(e.target.value)} /></div>
+              <button onClick={updateAdminPassword} disabled={adminBusy || !currentAdminPassword || newAdminPassword.length < 8} className={btnGhost}>修改口令</button>
+            </div>
+          )}
+          {adminMsg && <p className={`mt-3 text-sm ${adminMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{adminMsg.text}</p>}
+        </section>
+      )}
+
+      {tab === "api" && (admin ? (
         <section className={cardClass}>
           <h2 className="mb-1 text-base font-semibold text-[#24342b]">API 密钥与大模型配置</h2>
-          <p className="mb-4 text-xs text-[#8a9a8e]">配置保存在本机 .local-data/ 中（不入 Git）。未填写时仍会回退读取 .env.local，老配置不受影响。</p>
-          <div className="mb-3"><label className={labelClass}>API 密钥</label><input className={inputClass} type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-…" /></div>
+          <p className="mb-4 text-xs text-[#8a9a8e]">配置保存在服务端持久目录。密钥留空保存会保留原值。</p>
+          <div className="mb-3"><label className={labelClass}>API 密钥</label><input className={inputClass} type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={settings?.llm.apiKeyConfigured ? "已配置；留空则保留" : "填写 API 密钥"} /></div>
           <div className="mb-3"><label className={labelClass}>Base URL（留空使用供应商默认）</label><input className={inputClass} value={baseURL} onChange={(e) => setBaseURL(e.target.value)} placeholder="https://api.deepseek.com/v1" /></div>
           <div className="mb-3"><label className={labelClass}>默认模型</label><input className={inputClass} value={model} onChange={(e) => setModel(e.target.value)} placeholder="deepseek-chat" /></div>
           <details className="mb-3 rounded-lg border border-[#e8ebe5] p-3">
@@ -391,9 +475,9 @@ export default function SettingsPage() {
           </div>
           {saveMsg && <p className={`mt-3 text-sm ${saveMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{saveMsg.text}</p>}
           {testMsg && <p className={`mt-1.5 text-sm ${testMsg.ok ? "text-[#3c6b4c]" : "text-[#c0392b]"}`}>{testMsg.text}</p>}
-          {settings && <p className={hintClass}>当前生效：密钥 {settings.active.apiKeyMasked || "未配置"} · 模型 {settings.active.model}{settings.llm.updatedAt ? ` · 上次保存 ${new Date(settings.llm.updatedAt).toLocaleString("zh-CN")}` : ""}</p>}
+          {settings && <p className={hintClass}>当前生效：密钥{settings.active.apiKeyConfigured ? "已配置" : "未配置"} · 模型 {settings.active.model}{settings.llm.updatedAt ? ` · 上次保存 ${new Date(settings.llm.updatedAt).toLocaleString("zh-CN")}` : ""}</p>}
         </section>
-      )}
+      ) : <section className={cardClass}><p className="text-sm text-[#24342b]">请先在「管理员」中登录，再查看模型配置。</p><button onClick={() => setTab("admin")} className={btnPrimary + " mt-3"}>前往管理员登录</button></section>)}
 
       {tab === "billing" && usage && (
         <section className={cardClass}>
@@ -456,7 +540,7 @@ export default function SettingsPage() {
             <p className="mt-1 text-xs text-[#8a9a8e]">面向中小企业的轻量级 AI 智能多平台传播工作台 · 本地演示版</p>
           </div>
           <h3 className="mb-2 mt-6 text-sm font-semibold text-[#24342b]">本地数据</h3>
-          <p className={hintClass}>草稿、素材与偏好保存在浏览器 localStorage；API 密钥与用量保存在服务端 .local-data/。清理后需重新填写配置。</p>
+          <p className={hintClass}>草稿、素材与偏好保存在浏览器 localStorage；服务端配置保存在独立持久目录。此处清理不会删除服务端配置。</p>
           <button onClick={clearLocalCache} className={btnGhost + " mt-3"}><Trash2 size={15} /> 清理本地演示数据</button>
         </section>
       )}
