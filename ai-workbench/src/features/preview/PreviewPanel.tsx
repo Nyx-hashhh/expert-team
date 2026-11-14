@@ -3,7 +3,7 @@
 import { Bookmark, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, Copy, Download, Globe2, Heart, ImageIcon, MessageCircle, MessageCircleMore, Minus, Music2, Pause, PenLine, Play, Plus, Repeat2, RotateCcw, Search, Send, Share2, Star, UserRound, UserPlus, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PLATFORM_LABELS, PLATFORMS, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
+import { PLATFORM_LABELS, PLATFORMS, normalizeHashtags, type ContentVersion, type Enterprise, type GenerateResult, type Platform, type Version } from "@/contracts/content";
 import { readLocal, writeLocal } from "@/lib/storage";
 import { ensureMockFontScaleStyle } from "./mock-font-scale";
 import { DEFAULT_TIME_ZONE, INITIAL_FAVORITE_TIME_ZONES, RECOMMENDED_TIME_ZONES, SCHEDULE_TIME_ZONES, findScheduleTimeZone, scheduleDateToUtc, type ScheduleTimeZone } from "@/lib/schedule-timezones";
@@ -270,8 +270,8 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
 
   function handleEditHashtags(value: string) {
     setEditHashtags(value);
-    const tags = value.split(/[\s,，、]+/).map((tag) => tag.replace(/^#+/, "").trim()).filter(Boolean);
-    applyEdit({ hashtags: tags });
+    // 手改输入允许省略 #：剥掉前导 # 后统一补回，保证预览、复制与导出始终带 #
+    applyEdit({ hashtags: normalizeHashtags(value.split(/[\s,，、]+/)) });
   }
 
   function restoreEditOriginal() {
@@ -479,7 +479,7 @@ export function PreviewPanel({ enterprise, result, activePlatform, activeVersion
         <p>{PLATFORM_LABELS[activePlatform]} · 版本 {activeVersion} · 修改会实时同步到拟真预览、复制与导出</p>
         <label className={previewCss.editField}><span>标题</span><input value={editTitle} onChange={(event) => handleEditTitle(event.target.value)} placeholder="标题" /></label>
         <label className={previewCss.editField}><span>正文</span><textarea value={editBody} onChange={(event) => handleEditBody(event.target.value)} rows={6} placeholder="正文" /></label>
-        <label className={previewCss.editField}><span>话题标签 <small>用空格分隔，# 号可省略</small></span><input value={editHashtags} onChange={(event) => handleEditHashtags(event.target.value)} placeholder="例如：春茶 手作 城市周边" /></label>
+        <label className={previewCss.editField}><span>话题标签 <small>用空格分隔，# 号自动补全</small></span><input value={editHashtags} onChange={(event) => handleEditHashtags(event.target.value)} placeholder="例如：春茶 手作 城市周边" /></label>
         <div className={previewCss.editActions}>
           <button type="button" className={previewCss.editRestore} onClick={restoreEditOriginal}><RotateCcw size={14} /> 还原原文</button>
           <button type="button" className={previewCss.editDone} onClick={() => setEditOpen(false)}>完成手改</button>

@@ -48,6 +48,14 @@ export interface ContentVersion {
 
 export type PlatformVersions = Record<Version, ContentVersion>;
 
+// 话题标签统一规范：存储层永远带前导 #，模型漏写或手改输入省略时自动补全。
+// 保留尾部 #（兼容微博「#话题名#」闭合格式），只剥前导 # 后重补。
+export function normalizeHashtags(tags: readonly string[]): string[] {
+  return tags
+    .map((tag) => `#${tag.replace(/^#+/, "").trim()}`)
+    .filter((tag) => tag.length > 1);
+}
+
 export interface CreativeBrief {
   mode: TranslationMode;
   audience: string;

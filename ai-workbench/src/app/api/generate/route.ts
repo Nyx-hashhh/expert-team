@@ -2,7 +2,7 @@ import { z } from "zod";
 import enterprisesData from "@/data/enterprises.json";
 import { buildRuntimeGenerationInstruction } from "@/data/copywriting-runtime";
 import { getTranslationPlaybook } from "@/data/translation-playbooks";
-import { CONTRACT_VERSION, PLATFORMS, type Enterprise, type GenerateResult, type Platform, type PlatformVersions, type TranslationMode } from "@/contracts/content";
+import { CONTRACT_VERSION, normalizeHashtags, PLATFORMS, type Enterprise, type GenerateResult, type Platform, type PlatformVersions, type TranslationMode } from "@/contracts/content";
 import { creativeBriefSchema } from "@/lib/creative-brief";
 import { createLlmClient } from "@/lib/llm-client";
 import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
@@ -61,7 +61,7 @@ function platformSystemPrompt(enterprise: Enterprise, mode: TranslationMode, ton
   const storyboardSkeleton = STORYBOARD_PLATFORMS.includes(platform)
     ? '，两版各再增加 "storyboard": [{"timeRange": "…", "shot": "…", "voiceover": "…", "bgm": "…"}]'
     : "";
-  return `你是中小企业多平台传播策划。${runtimeInstruction} 本次目标平台：${platform}。${langRule}品牌名、地名和平台固有名称可保留专名；除用户明确要求外，不要把另一种语言的素材原文直接拼入句子，应自然转述。不得捏造产品事实、客观效果、数据、功效、认证、用户评价、排名或实时热榜；可以创作合理的普通人物、生活动作、购买过程、对话和主观感受来组织叙事，但不能把创作经历当作真实背书或证据。只输出一个合法 JSON 对象，结构固定为：{"A": {"title": "…", "body": "…", "hashtags": ["…"]}, "B": {"title": "…", "body": "…", "hashtags": ["…"]}}${storyboardSkeleton}。顶层键仅使用 A 和 B，A、B 的值必须是对象而不是数组。`;
+  return `你是中小企业多平台传播策划。${runtimeInstruction} 本次目标平台：${platform}。${langRule}品牌名、地名和平台固有名称可保留专名；除用户明确要求外，不要把另一种语言的素材原文直接拼入句子，应自然转述。不得捏造产品事实、客观效果、数据、功效、认证、用户评价、排名或实时热榜；可以创作合理的普通人物、生活动作、购买过程、对话和主观感受来组织叙事，但不能把创作经历当作真实背书或证据。只输出一个合法 JSON 对象，结构固定为：{"A": {"title": "…", "body": "…", "hashtags": ["…"]}, "B": {"title": "…", "body": "…", "hashtags": ["…"]}}${storyboardSkeleton}。顶层键仅使用 A 和 B，A、B 的值必须是对象而不是数组。hashtags 数组每项都是一个话题标签，一律以 # 开头（如 "#春茶"）。`;
 }
 
 export async function POST(request: Request) {
@@ -111,6 +111,8 @@ export async function POST(request: Request) {
           if (Array.isArray(json[key])) json[key] = (json[key] as unknown[]).find((item) => item && typeof item === "object") ?? (json[key] as unknown[])[0];
         }
         const pair = platformPairSchema.parse(json);
+        // 模型偶发漏写话题标签的前导 #，统一在存储层补全（尾部 # 保留，兼容微博闭合格式）
+        for (const version of ["A", "B"] as const) pair[version].hashtags = normalizeHashtags(pair[version].hashtags);
         if (platform === "xiaohongshu") assertXiaohongshuBlockCount(pair);
         return [platform, { A: pair.A, B: pair.B }];
       } catch (error) {
