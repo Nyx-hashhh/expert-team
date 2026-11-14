@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, BookOpen, CalendarDays, Check, ChevronRight, Copy, FileText, Layers3, Menu, Plus, Search, Settings2, Sparkles, WandSparkles, X } from "lucide-react";
+import { AlertTriangle, BarChart3, BookOpen, CalendarDays, Check, ChevronRight, Copy, FileText, Layers3, Menu, Plus, Search, Settings2, Sparkles, WandSparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
@@ -70,6 +70,18 @@ export function Workbench() {
     ? { name: customEnterpriseProfile.name, industry: customEnterpriseProfile.industry, location: customEnterpriseProfile.location, tagline: customEnterpriseProfile.tagline }
     : undefined;
 
+  function resolveSelectedMaterials(brief: CreativeBrief) {
+    const compatibleIds = new Set(brief.materialResolution.compatibleMaterialIds);
+    const ids = selectedIds.filter((id) => compatibleIds.has(id));
+    return { ids, items: materials.filter((item) => ids.includes(item.id)) };
+  }
+
+  function applyMaterialResolution(brief: CreativeBrief) {
+    const resolved = resolveSelectedMaterials(brief);
+    if (brief.materialResolution.hasConflict) setSelectedIds(resolved.ids);
+    return resolved;
+  }
+
   function clampPreviewWidth(width: number) {
     const viewport = Math.min(window.innerWidth, 1800);
     // 预留宽度对应 globals.css 断点下的侧栏与主栏最小轨道：≤1250px 为 205+450，以上为 244+570
@@ -105,7 +117,7 @@ export function Workbench() {
         throw new Error(payload?.error ?? "智能转译服务不可用");
       }
       const translated = await response.json() as TranslateResult;
-      if (translated.contractVersion !== CONTRACT_VERSION || !translated.brief?.storyAngle) throw new Error("转译响应格式异常");
+      if (translated.contractVersion !== CONTRACT_VERSION || !translated.brief?.storyAngle || !translated.brief.materialResolution?.contextSignature) throw new Error("转译响应格式异常");
       return translated;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw new Error("智能转译请求超时，请重试");
@@ -122,7 +134,10 @@ export function Workbench() {
     try {
       const translated = await requestCreativeBrief();
       setCreativeBrief(translated.brief);
-      setNotice("已由智能模型生成文案思路");
+      applyMaterialResolution(translated.brief);
+      setNotice(translated.brief.materialResolution.warning
+        ? `${translated.brief.materialResolution.warning}；已生成文案思路`
+        : "已由智能模型生成文案思路");
     } catch (error) {
       setNotice(`智能转译失败：${error instanceof Error ? error.message : "请稍后重试"}`);
     } finally {
@@ -204,14 +219,19 @@ export function Workbench() {
     if (!isDevelopment && quota <= 0) { setNotice("试用额度已用完"); return; }
     setIsGenerating(true); setNotice("正在提炼故事切口与真实表达…");
     startBusyTimer();
-    const translated = creativeBrief ? null : await requestCreativeBrief().catch(() => null);
-    const brief = creativeBrief ?? translated?.brief;
-    if (brief) setCreativeBrief(brief);
-    const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, ...(enterpriseProfile ? { enterpriseProfile } : {}), selectedMaterialIds: selectedIds, selectedMaterials: materials.filter((item) => selectedIds.includes(item.id)), goal: goal.trim(), platforms, tone, translationMode, creativeBrief: brief };
-    setNotice("正在按文案思路准备各平台 A/B 内容…");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 100000);
+    let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
+      const translated = creativeBrief ? null : await requestCreativeBrief();
+      const brief = creativeBrief ?? translated?.brief;
+      if (!brief) throw new Error("未能完成产品与素材冲突检查，请重试");
+      setCreativeBrief(brief);
+      const resolved = applyMaterialResolution(brief);
+      const request: GenerateRequest = { contractVersion: CONTRACT_VERSION, enterpriseId, ...(enterpriseProfile ? { enterpriseProfile } : {}), selectedMaterialIds: resolved.ids, selectedMaterials: resolved.items, goal: goal.trim(), platforms, tone, translationMode, creativeBrief: brief };
+      setNotice(brief.materialResolution.warning
+        ? `${brief.materialResolution.warning}；正在按筛选后的素材生成内容…`
+        : "正在按文案思路准备各平台 A/B 内容…");
+      const controller = new AbortController();
+      timeout = setTimeout(() => controller.abort(), 100000);
       const response = await authFetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request), signal: controller.signal });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -222,13 +242,15 @@ export function Workbench() {
       if (next.contractVersion !== CONTRACT_VERSION || !next.platforms[platforms[0]]?.A) throw new Error("生成响应格式异常");
       setResult(next); setActivePlatform(platforms[0]); setActiveVersion("A");
       if (!isDevelopment) { setQuota(quota - 1); writeLocal("quota-v2", quota - 1); }
-      setNotice("已生成各平台 A/B 创意文案");
+      setNotice(brief.materialResolution.warning
+        ? `${brief.materialResolution.warning}；已生成各平台 A/B 创意文案`
+        : "已生成各平台 A/B 创意文案");
     } catch (error) {
       const message = error instanceof DOMException && error.name === "AbortError" ? "请求超时，请重试" : error instanceof Error ? error.message : "请检查 API 配置后重试";
       setNotice(`生成失败：${message}`);
     } finally {
       stopBusyTimer();
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       setIsGenerating(false);
     }
   }
@@ -270,7 +292,7 @@ export function Workbench() {
     <main className="main-column"><header className="topbar"><div className="breadcrumb">工作空间 <ChevronRight size={14} /> <strong>多平台创作</strong></div><div className="topbar-right"><span className="topbar-search"><Search size={15} /> 搜索功能</span><span className="topbar-user">主</span></div></header>
       <div className="studio-content"><div className="page-intro"><div><div className="intro-kicker"><Sparkles size={15} /> AI 驱动的内容增长工作台</div><h1>让好故事，抵达每一个平台<span>✦</span></h1><p>汇集企业知识，一次创作，多平台精准转译。</p></div><div className="intro-decoration"><span>创意</span><span>策略</span><span>增长</span></div></div>
       <section className="section-card enterprise-section"><div className="section-heading"><div><span className="step">01</span><h2>选择企业案例</h2></div><p>一键载入行业背景与品牌素材</p></div><div className="enterprise-grid">{allEnterprises.map((item) => <button key={item.id} onClick={() => changeEnterprise(item.id)} className={`enterprise-tile ${item.id === enterpriseId ? "active" : ""}`}><span className="enterprise-symbol" style={{ backgroundColor: `${item.accent}33`, color: item.accent }}>{item.name.slice(0, 1)}</span><span><strong>{item.name}</strong><small>{item.industry}</small></span>{item.id === enterpriseId && <Check size={17} />}{customEnterprises.some((custom) => custom.id === item.id) && <span className="tile-remove" role="button" aria-label={`删除自定义企业 ${item.name}`} title="删除该自定义企业" onClick={(event) => { event.stopPropagation(); removeCustomEnterprise(item.id); }}><X size={13} /></span>}</button>)}<button type="button" className="enterprise-tile add-tile" onClick={() => setShowEnterpriseForm(true)} aria-haspopup="dialog"><span className="enterprise-symbol"><Plus size={17} /></span><span><strong>新增企业类型</strong><small>自定义行业与品牌背景</small></span></button></div><div className="case-note"><span className="case-dot" style={{ backgroundColor: enterprise.accent }} /> {enterprise.location} · {enterprise.tagline}</div></section>
-      <section className="section-card" id="knowledge"><div className="section-heading"><div><span className="step">02</span><h2>企业素材与知识库</h2></div><button className="text-action" onClick={() => setShowMaterialForm(true)}><Plus size={16} /> 新增素材</button></div><p className="section-desc">勾选素材，AI 将依据产品参数、故事背景与爆款参考创作；参考品牌信息需核实后使用。</p><div className="material-list">{materials.map((item) => <button className={`material-item ${selectedIds.includes(item.id) ? "checked" : ""}`} key={item.id} onClick={() => { setSelectedIds((current) => current.includes(item.id) ? current.filter((value) => value !== item.id) : [...current, item.id]); setCreativeBrief(null); }}><span className="check-box">{selectedIds.includes(item.id) && <Check size={13} />}</span><span className={`material-kind ${item.type}`}>{typeLabels[item.type]}</span><span className="material-copy"><strong>{item.title}</strong><small>{item.content}</small></span></button>)}</div><div className="selected-foot">已选 <strong>{selectedIds.length}</strong> 项素材，将作为生成背景知识</div></section>
+      <section className="section-card" id="knowledge"><div className="section-heading"><div><span className="step">02</span><h2>企业素材与知识库</h2></div><button className="text-action" onClick={() => setShowMaterialForm(true)}><Plus size={16} /> 新增素材</button></div><p className="section-desc">勾选素材，AI 将依据产品参数、故事背景与爆款参考创作；参考品牌信息需核实后使用。</p><div className="material-list">{materials.map((item) => <button className={`material-item ${selectedIds.includes(item.id) ? "checked" : ""}`} key={item.id} onClick={() => { setSelectedIds((current) => current.includes(item.id) ? current.filter((value) => value !== item.id) : [...current, item.id]); setCreativeBrief(null); }}><span className="check-box">{selectedIds.includes(item.id) && <Check size={13} />}</span><span className={`material-kind ${item.type}`}>{typeLabels[item.type]}</span><span className="material-copy"><strong>{item.title}</strong><small>{item.content}</small></span></button>)}</div><div className="selected-foot">已选 <strong>{selectedIds.length}</strong> 项素材，将作为生成背景知识</div>{creativeBrief?.materialResolution.warning && <div className="material-resolution-alert" role="status"><AlertTriangle size={16} /><div><strong>{creativeBrief.materialResolution.hasConflict ? "已排除冲突素材" : "当前产品资料需要补充"}</strong><p>{creativeBrief.materialResolution.warning}</p>{creativeBrief.materialResolution.excludedMaterials.map((item) => <small key={item.id}>{item.title}：{item.reason}</small>)}</div></div>}</section>
       <section className="section-card create-section"><div className="section-heading"><div><span className="step">03</span><h2>设置本次宣发任务</h2></div><button className={`ai-badge engine-trigger ${showEnginePanel ? "active" : ""}`} type="button" onClick={() => setShowEnginePanel((value) => !value)} aria-expanded={showEnginePanel}><Sparkles size={14} /> 智能转译引擎 · {TRANSLATION_MODE_LABELS[translationMode].name}<ChevronRight size={13} /></button></div>{showEnginePanel && <div className="engine-panel"><div className="engine-panel-heading"><div><strong>选择转译思路</strong><p>根据想法生成清晰的内容思路：宣发受众、核心表达、内容切口与开场钩子。</p></div><span>已启用</span></div><div className="engine-mode-grid">{(["story", "seed", "brand"] as TranslationMode[]).map((mode) => <button type="button" key={mode} className={translationMode === mode ? "active" : ""} onClick={() => { setTranslationMode(mode); setCreativeBrief(null); }}><span>{translationMode === mode && <Check size={12} />}</span><strong>{TRANSLATION_MODE_LABELS[mode].name}</strong><small>{TRANSLATION_MODE_LABELS[mode].description}</small></button>)}</div><button className="translate-idea-button" type="button" onClick={translateIdea} disabled={isTranslating}><Sparkles size={14} /> {isTranslating ? `正在生成思路… ${busySeconds} 秒` : creativeBrief ? "重新生成个性化思路" : "生成个性化转译思路"}</button>{creativeBrief && <div className="creative-brief" aria-live="polite"><div><span>宣发受众</span><strong>{creativeBrief.audience}</strong></div><div><span>核心表达</span><strong>{creativeBrief.coreMessage}</strong></div><div><span>内容切口</span><strong>{creativeBrief.storyAngle}</strong></div><div><span>开场钩子</span><strong>{creativeBrief.hook}</strong></div><button className="brief-fill-button" type="button" onClick={fillGoalFromBrief} aria-controls="goal"><Copy size={13} /> 一键填入诉求</button></div>}</div>}<label className="field-label" htmlFor="goal">核心宣发诉求 <span>*</span></label><textarea id="goal" value={goal} onChange={(event) => { setGoal(event.target.value); setCreativeBrief(null); }} placeholder="例如：新品上市早鸟特惠，主打年轻白领送礼场景；希望突出产地故事和品质感……" /><div className="field-meta"><span>清晰描述目标、受众与卖点，效果更好</span><span>{goal.length} 字</span></div><div className="form-divider" /><div className="platform-field-heading"><div className="field-label">目标平台 <small>支持多选 · 海外平台自动生成原生英文文案</small></div><button className={`select-all-button ${allPlatformsSelected ? "active" : ""}`} type="button" onClick={() => setPlatforms(allPlatformsSelected ? [] : [...PLATFORMS])} aria-pressed={allPlatformsSelected}><span className="select-all-check">{allPlatformsSelected && <Check size={12} />}</span>{allPlatformsSelected ? "取消全选" : "全选"}</button></div><div className="platform-choices">{PLATFORMS.map((platform) => <button key={platform} className={platforms.includes(platform) ? "active" : ""} onClick={() => setPlatforms((current) => current.includes(platform) ? current.filter((item) => item !== platform) : [...current, platform])}><span className={`platform-mark ${platform}`}>{platformMarks[platform]}</span><span><strong>{PLATFORM_LABELS[platform]}</strong><small>{platformDescriptions[platform]}</small></span><span className="choice-check">{platforms.includes(platform) && <Check size={12} />}</span></button>)}</div><div className="field-label tone-label">表达语调</div><div className="tone-choices">{tones.map((item) => <button key={item} className={tone === item ? "active" : ""} onClick={() => { setTone(item); setCreativeBrief(null); }}>{item}</button>)}</div><div className="generate-row"><div><strong>智能转译 + A/B 双版本创作</strong><p>先把想法转成个性化文案思路，再按思路完成各平台表达</p></div><Button className="generate-button" onClick={generate} disabled={isGenerating || isTranslating}><WandSparkles size={18} /> {isGenerating ? `生成中… ${busySeconds} 秒` : "一键生成内容"} <ChevronRight size={17} /></Button></div>{notice && <p className="studio-notice" role="status">{notice}</p>}</section>
       <div className="bottom-tip" id="reference"><Copy size={17} /> 创作建议：先选择 2–3 项最相关素材，再简要说明推广场景与目标受众。</div></div>
     </main>

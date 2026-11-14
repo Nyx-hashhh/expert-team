@@ -4,6 +4,7 @@ import { getTranslationPlaybook } from "@/data/translation-playbooks";
 import { CONTRACT_VERSION, type Enterprise, type TranslateRequest, type TranslateResult } from "@/contracts/content";
 import { fitCreativeBriefToLimits, CREATIVE_BRIEF_LIMIT_INSTRUCTION } from "@/lib/creative-brief";
 import { createLlmClient } from "@/lib/llm-client";
+import { finalizeMaterialResolution } from "@/lib/material-resolution";
 import { consumeUsage, getLlmConfig, hasQuota, quotaExceededMessage, resolveRequestSession, resolveScope } from "@/lib/server-store";
 
 const materialSchema = z.object({ id: z.string(), type: z.enum(["product", "story", "reference"]), title: z.string().max(200), content: z.string().max(5000) });
@@ -23,8 +24,22 @@ const briefCandidateSchema = z.object({
   storyAngle: z.string().trim().min(1),
   hook: z.string().trim().min(1),
 });
+const materialResolutionCandidateSchema = z.object({
+  currentProductIdentity: z.string().trim().min(1).max(120),
+  productIdentitySource: z.enum(["goal", "materials", "unknown"]),
+  hasConflict: z.boolean(),
+  compatibleMaterialIds: z.array(z.string()).max(30),
+  excludedMaterials: z.array(z.object({ id: z.string(), reason: z.string().trim().min(1).max(300) })).max(30),
+  factsSufficient: z.boolean(),
+});
+const responseCandidateSchema = briefCandidateSchema.extend({ materialResolution: materialResolutionCandidateSchema });
 
-function parseBrief(raw: string, mode: TranslateRequest["mode"]): TranslateResult["brief"] {
+function parseBrief(
+  raw: string,
+  mode: TranslateRequest["mode"],
+  goal: string,
+  selectedMaterials: TranslateRequest["selectedMaterials"],
+): TranslateResult["brief"] {
   let json: unknown;
   try { json = JSON.parse(raw); }
   catch {
@@ -36,7 +51,11 @@ function parseBrief(raw: string, mode: TranslateRequest["mode"]): TranslateResul
   }
   // mode 由用户在前端选定，避免模型在该字段追加说明导致无谓失败
   if (json && typeof json === "object" && !Array.isArray(json)) (json as Record<string, unknown>).mode = mode;
-  return fitCreativeBriefToLimits(briefCandidateSchema.parse(json));
+  const candidate = responseCandidateSchema.parse(json);
+  return {
+    ...fitCreativeBriefToLimits(candidate),
+    materialResolution: finalizeMaterialResolution(candidate.materialResolution, goal, selectedMaterials),
+  };
 }
 
 export async function POST(request: Request) {
@@ -60,7 +79,7 @@ export async function POST(request: Request) {
   // 只有空正文或 JSON 结构损坏才重试，避免为字数问题多等一轮模型。
   const client = createLlmClient({ apiKey, baseURL, timeoutMs: 16000, maxRetries: 0 });
   try {
-    const systemPrompt = `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，而不是直接写成品广告。当前模式规则：${playbook.briefInstruction} 产品事实、客观效果、数据、功效、认证、排名和用户评价必须严格依据企业素材；可以设计合理的普通人物、生活动作、购买过程、对话和主观感受作为创作叙事，但不能把它们当作事实证据或真实用户背书。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。${CREATIVE_BRIEF_LIMIT_INSTRUCTION} 只输出合法 JSON，字段为：mode、audience、coreMessage、storyAngle、hook。每项都用一句具体、可执行的中文表述，不写解释或多余字段。`;
+    const systemPrompt = `你是资深内容策划，负责把客户的原始宣发诉求转成个性化、可执行的创意简报，并在成文前完成产品身份与素材冲突检查。当前模式规则：${playbook.briefInstruction} 产品事实、客观效果、数据、功效、认证、排名和用户评价必须严格依据输入；可以设计合理的普通人物、生活动作、购买过程、对话和主观感受作为创作叙事，但不能把它们当作事实证据或真实用户背书。产品身份优先级：如果 goal 明确写出另一款产品、品类、套装形态或关键属性，goal 中的当前产品身份最高，旧产品素材不得覆盖；如果 goal 只改变受众、场景或传播目标而没有明确另一款产品，则沿用已选产品素材。逐项检查 selectedMaterials：产品类型或SKU冲突（如精华与水乳套装）、属性冲突（如无香精与明确西柚香味）、规格、配方、价格或功效归属不同产品时，排除整项旧产品素材；品牌故事和参考文案只有在不携带旧SKU参数且与当前产品不冲突时才保留。compatibleMaterialIds 必须列出每一项可安全用于当前任务的已选素材ID；hasConflict 为 true 时，未列入 compatibleMaterialIds 的素材会被服务端自动排除。factsSufficient 表示 goal 与保留素材是否足以支持具体成文；不足也可继续，但只能保守表达，绝不能退回旧SKU补信息。不要堆砌形容词，不使用“赋能、引领、匠心打造、重新定义”等套话。${CREATIVE_BRIEF_LIMIT_INSTRUCTION} 只输出合法 JSON，结构为：{"mode":"story|seed|brand","audience":"…","coreMessage":"…","storyAngle":"…","hook":"…","materialResolution":{"currentProductIdentity":"当前产品身份","productIdentitySource":"goal|materials|unknown","hasConflict":true,"compatibleMaterialIds":["素材ID"],"excludedMaterials":[{"id":"素材ID","reason":"与当前产品冲突的具体原因"}],"factsSufficient":true}}。四个简报字段各用一句具体、可执行的中文短句；不要输出解释或多余字段。`;
     const sourcePayload = { enterprise, goal: input.goal, tone: input.tone, mode: input.mode, selectedMaterials: input.selectedMaterials };
     let brief: TranslateResult["brief"] | null = null;
     let lastError: unknown;
@@ -84,7 +103,7 @@ export async function POST(request: Request) {
         });
         const raw = completion.choices[0]?.message?.content;
         if (!raw) throw new Error(`模型未返回正文（finish_reason=${completion.choices[0]?.finish_reason ?? "unknown"}）`);
-        brief = parseBrief(raw, input.mode);
+        brief = parseBrief(raw, input.mode, input.goal, input.selectedMaterials);
         break;
       } catch (error) {
         lastError = error;

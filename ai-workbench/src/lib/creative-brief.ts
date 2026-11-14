@@ -81,6 +81,26 @@ export const creativeBriefSchema = z.object({
   }
 });
 
+export const materialResolutionSchema = z.object({
+  currentProductIdentity: z.string().trim().min(1).max(120),
+  productIdentitySource: z.enum(["goal", "materials", "unknown"]),
+  hasConflict: z.boolean(),
+  compatibleMaterialIds: z.array(z.string()).max(30),
+  excludedMaterials: z.array(z.object({
+    id: z.string(),
+    title: z.string().max(200),
+    reason: z.string().trim().min(1).max(300),
+  })).max(30),
+  factsSufficient: z.boolean(),
+  warning: z.string().max(1000),
+  contextSignature: z.string().regex(/^[a-f0-9]{64}$/u),
+});
+
+export const creativeBriefWithResolutionSchema = z.intersection(
+  creativeBriefSchema,
+  z.object({ materialResolution: materialResolutionSchema }),
+);
+
 export type CreativeBriefCandidate = {
   mode: "story" | "seed" | "brand";
   audience: string;
