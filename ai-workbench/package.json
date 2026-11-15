@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "admin:init": "node scripts/init-admin.mjs",
+    "test:admin": "node scripts/check-admin.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

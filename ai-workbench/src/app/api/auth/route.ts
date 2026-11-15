@@ -9,11 +9,9 @@ import {
   destroySession,
   getSmtpConfig,
   hashPassword,
-  maskApiKey,
   readUsers,
   resolveSession,
   verifyEmailCode,
-  writeSmtp,
   writeUsers,
 } from "@/lib/server-store";
 
@@ -27,13 +25,6 @@ const postSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("login"), email: z.string().email().max(200), password: z.string().max(100) }),
   z.object({ action: z.literal("logout"), token: z.string().max(200) }),
   z.object({ action: z.literal("send-code"), email: z.string().email().max(200) }),
-  z.object({
-    action: z.literal("save-smtp"),
-    user: z.string().email().max(200),
-    authCode: z.string().min(1).max(200),
-    host: z.string().max(200).optional(),
-    port: z.coerce.number().int().min(1).max(65535).optional(),
-  }),
 ]);
 
 // 用户系统：邮箱 + 密码 + 邮箱验证码注册，会话令牌由前端保存在 localStorage。
@@ -42,16 +33,8 @@ export async function GET(request: Request) {
   await connection();
   const token = new URL(request.url).searchParams.get("token") ?? "";
   const session = token ? resolveSession(token) : null;
-  // 附带发信邮箱配置状态（只回传掩码，不回传授权码）
-  const smtp = getSmtpConfig();
-  const smtpStatus = {
-    user: smtp.user,
-    authCodeMasked: maskApiKey(smtp.authCode),
-    host: smtp.host,
-    hasEnvCode: Boolean(process.env.SMTP_AUTH_CODE),
-  };
-  if (!session) return Response.json({ user: null, smtp: smtpStatus });
-  return Response.json({ user: { email: session.email, createdAt: session.createdAt }, smtp: smtpStatus });
+  if (!session) return Response.json({ user: null });
+  return Response.json({ user: { email: session.email, createdAt: session.createdAt } });
 }
 
 export async function POST(request: Request) {
@@ -64,15 +47,6 @@ export async function POST(request: Request) {
   if (input.action === "logout") {
     destroySession(input.token);
     return Response.json({ ok: true });
-  }
-
-  // —— 保存发信邮箱 SMTP 授权码（存 .local-data/smtp.json，不入仓库） ——
-  if (input.action === "save-smtp") {
-    const user = input.user.toLowerCase().trim();
-    const host = (input.host ?? "").trim();
-    const port = input.port ?? 465;
-    writeSmtp({ user, authCode: input.authCode.trim(), host, port });
-    return Response.json({ ok: true, smtp: { user, authCodeMasked: maskApiKey(input.authCode.trim()), host, port } });
   }
 
   const email = input.email.toLowerCase().trim();
@@ -100,7 +74,7 @@ export async function POST(request: Request) {
     if (!smtp.user || !smtp.authCode || !smtp.host) {
       deleteEmailCode(email);
       return Response.json(
-        { error: "尚未配置发信邮箱：请先在本页「发信邮箱配置」填入邮箱与 SMTP 授权码（或设置环境变量 SMTP_USER / SMTP_AUTH_CODE）" },
+        { error: "发信服务暂不可用，请联系管理员" },
         { status: 400 },
       );
     }
@@ -125,8 +99,8 @@ export async function POST(request: Request) {
       return Response.json({ ok: true, expiresIn: Math.round(CODE_TTL_MS / 1000) });
     } catch (err) {
       deleteEmailCode(email); // 发信失败则撤销验证码，允许用户修好配置后立即重试
-      const detail = err instanceof Error ? err.message.slice(0, 200) : "未知错误";
-      return Response.json({ error: `邮件发送失败（${detail}）。请检查授权码是否正确、SMTP 服务是否已开启` }, { status: 502 });
+      console.error("[send-code] SMTP send failed:", err instanceof Error ? err.name : "unknown");
+      return Response.json({ error: "邮件发送失败，请稍后重试或联系管理员" }, { status: 502 });
     }
   }
 

@@ -96,9 +96,12 @@ try {
     if (-not $port) { throw 'Ports 3000-3010 are busy. Close another local server and retry.' }
 
     $url = "http://localhost:$port"
+    $dataDir = if ($env:WORKBENCH_DATA_DIR) { $env:WORKBENCH_DATA_DIR } else { Join-Path $HOME '.zhixing-workbench' }
+    $logDir = Join-Path $dataDir 'logs'
     if (-not $reuse) {
         $nextCli = Join-Path $modulesDir 'next\dist\bin\next'
-        $logDir = Join-Path $appDir '.next'
+        # Writing request logs into .next makes Turbopack notice its own output and
+        # can trigger a compile/reload loop in open browser tabs.
         New-Item -ItemType Directory -Path $logDir -Force | Out-Null
         $stdout = Join-Path $logDir 'workbench.stdout.log'
         $stderr = Join-Path $logDir 'workbench.stderr.log'
@@ -117,7 +120,7 @@ try {
         } catch { Start-Sleep -Milliseconds 750 }
     }
     if (-not $ready) {
-        throw "Workbench did not become ready at $url. Check ai-workbench\.next\workbench.stderr.log"
+        throw "Workbench did not become ready at $url. Check $logDir\workbench.stderr.log"
     }
 
     Start-Process $url
