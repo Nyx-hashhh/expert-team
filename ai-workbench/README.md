@@ -55,7 +55,7 @@ GENERATE_LLM_MODEL=生成使用的模型名
 | 队友 C | `src/data/`、`src/features/analytics/`、`src/app/analytics/` | 行业案例与传播看板 |
 | 主程 A | `src/app/page.tsx`、`src/app/layout.tsx`、`src/features/calendar/` | 页面装配与排期状态流转 |
 
-共享契约在 `src/contracts/content.ts`，当前版本 `contractVersion: 1`。生成请求包含企业 ID、已选素材 ID 与素材正文、诉求、平台数组和语调。返回结果按平台划分，每个平台固定有 `A`、`B` 两版。修改契约时先与其他负责人同步，避免跨目录编辑。
+共享契约在 `src/contracts/content.ts`，当前版本 `contractVersion: 2`。生成请求包含企业 ID、经产品冲突检查后的素材、当前宣发诉求、平台数组、语调和创意简报；创意简报会记录当前产品身份、排除的冲突素材及上下文签名。返回结果按平台划分，每个平台固定有 `A`、`B` 两版。修改契约时先与其他负责人同步，避免跨目录编辑。
 
 预设案例和模拟数据存于 `src/data/`。新增素材、排期列表与试用额度保存在当前浏览器的 localStorage 中。传播看板数据明确为演示模拟数据；状态“模拟已发布”不会调用社媒平台接口。
 

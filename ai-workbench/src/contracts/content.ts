@@ -1,4 +1,4 @@
-export const CONTRACT_VERSION = 1 as const;
+export const CONTRACT_VERSION = 2 as const;
 
 export type Platform = "xiaohongshu" | "weibo" | "douyin" | "instagram" | "tiktok";
 export type Version = "A" | "B";
@@ -48,12 +48,38 @@ export interface ContentVersion {
 
 export type PlatformVersions = Record<Version, ContentVersion>;
 
+export interface ExcludedMaterial {
+  id: string;
+  title: string;
+  reason: string;
+}
+
+export interface MaterialResolution {
+  currentProductIdentity: string;
+  productIdentitySource: "goal" | "materials" | "unknown";
+  hasConflict: boolean;
+  compatibleMaterialIds: string[];
+  excludedMaterials: ExcludedMaterial[];
+  factsSufficient: boolean;
+  warning: string;
+  contextSignature: string;
+}
+
+// 话题标签统一规范：存储层永远带前导 #，模型漏写或手改输入省略时自动补全。
+// 保留尾部 #（兼容微博「#话题名#」闭合格式），只剥前导 # 后重补。
+export function normalizeHashtags(tags: readonly string[]): string[] {
+  return tags
+    .map((tag) => `#${tag.replace(/^#+/, "").trim()}`)
+    .filter((tag) => tag.length > 1);
+}
+
 export interface CreativeBrief {
   mode: TranslationMode;
   audience: string;
   coreMessage: string;
   storyAngle: string;
   hook: string;
+  materialResolution: MaterialResolution;
 }
 
 export interface TranslateRequest {
@@ -82,7 +108,7 @@ export interface GenerateRequest {
   platforms: Platform[];
   tone: string;
   translationMode?: TranslationMode;
-  creativeBrief?: CreativeBrief;
+  creativeBrief: CreativeBrief;
 }
 
 export interface GenerateResult {
