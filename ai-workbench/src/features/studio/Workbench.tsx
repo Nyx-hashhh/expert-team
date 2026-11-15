@@ -3,13 +3,14 @@
 import { AlertTriangle, BarChart3, BookOpen, CalendarDays, Check, ChevronRight, Copy, FileText, Layers3, Menu, Plus, Search, Settings2, Sparkles, WandSparkles, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import Link from "next/link";
 import enterprisesData from "@/data/enterprises.json";
 import { CONTRACT_VERSION, PLATFORM_LABELS, PLATFORMS, TRANSLATION_MODE_LABELS, type ContentVersion, type CreativeBrief, type Enterprise, type GenerateRequest, type GenerateResult, type Material, type MaterialType, type Platform, type ScheduleItem, type TranslateRequest, type TranslateResult, type TranslationMode, type Version } from "@/contracts/content";
 import { readLocal, writeLocal } from "@/lib/storage";
 import { authFetch, clearToken } from "@/lib/auth-client";
 import { PreviewPanel } from "@/features/preview/PreviewPanel";
 import { Button } from "@/components/ui/button";
+import { WorkspaceSidebar } from "@/features/studio/WorkspaceSidebar";
+import { MATERIAL_OVERRIDES_STORAGE_KEY, mergeMaterials, type MaterialOverrides } from "@/lib/material-library";
 
 const enterprises = enterprisesData as Enterprise[];
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -28,6 +29,7 @@ const platformDescriptions: Record<Platform, string> = {
 export function Workbench() {
   const [enterpriseId, setEnterpriseId] = useState(enterprises[0].id);
   const [customMaterials, setCustomMaterials] = useState<Record<string, Material[]>>({});
+  const [materialOverrides, setMaterialOverrides] = useState<MaterialOverrides>({});
   const [selectedIds, setSelectedIds] = useState<string[]>(enterprises[0].materials.map((item) => item.id));
   const [goal, setGoal] = useState("");
   const [platforms, setPlatforms] = useState<Platform[]>([...PLATFORMS]);
@@ -63,7 +65,7 @@ export function Workbench() {
   }
   const allEnterprises = [...enterprises, ...customEnterprises];
   const enterprise = allEnterprises.find((item) => item.id === enterpriseId) ?? allEnterprises[0];
-  const materials = [...enterprise.materials, ...(customMaterials[enterprise.id] ?? [])];
+  const materials = mergeMaterials(enterprise.materials, customMaterials[enterprise.id] ?? [], materialOverrides[enterprise.id]);
   // 当前选中企业为自定义时，请求需携带档案供服务端回退使用（可选字段，向后兼容）
   const customEnterpriseProfile = customEnterprises.find((item) => item.id === enterpriseId);
   const enterpriseProfile = customEnterpriseProfile
@@ -91,7 +93,21 @@ export function Workbench() {
   }
 
   useEffect(() => {
-    const timeout = setTimeout(() => { setCustomMaterials(readLocal("materials", {})); setCustomEnterprises(readLocal<Enterprise[]>("custom-enterprises", [])); setQuota(readLocal("quota-v2", 20)); setPreviewWidth(clampPreviewWidth(readLocal("previewWidth", 414))); }, 0);
+    const timeout = setTimeout(() => {
+      const storedMaterials = readLocal<Record<string, Material[]>>("materials", {});
+      const storedEnterprises = readLocal<Enterprise[]>("custom-enterprises", []);
+      const requestedEnterpriseId = new URLSearchParams(window.location.search).get("enterprise");
+      const requestedEnterprise = [...enterprises, ...storedEnterprises].find((item) => item.id === requestedEnterpriseId);
+      setCustomMaterials(storedMaterials);
+      setMaterialOverrides(readLocal<MaterialOverrides>(MATERIAL_OVERRIDES_STORAGE_KEY, {}));
+      setCustomEnterprises(storedEnterprises);
+      if (requestedEnterprise) {
+        setEnterpriseId(requestedEnterprise.id);
+        setSelectedIds([...requestedEnterprise.materials.map((item) => item.id), ...(storedMaterials[requestedEnterprise.id] ?? []).map((item) => item.id)]);
+      }
+      setQuota(readLocal("quota-v2", 20));
+      setPreviewWidth(clampPreviewWidth(readLocal("previewWidth", 414)));
+    }, 0);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -202,6 +218,8 @@ export function Workbench() {
     // 同步清理该企业名下的自定义素材，避免遗留孤儿数据
     const nextMaterials = { ...customMaterials };
     if (delete nextMaterials[id]) { setCustomMaterials(nextMaterials); writeLocal("materials", nextMaterials); }
+    const nextOverrides = { ...materialOverrides };
+    if (delete nextOverrides[id]) { setMaterialOverrides(nextOverrides); writeLocal(MATERIAL_OVERRIDES_STORAGE_KEY, nextOverrides); }
     if (id === enterpriseId) {
       const fallback = enterprises[0];
       setEnterpriseId(fallback.id);
@@ -282,13 +300,7 @@ export function Workbench() {
 
   return <div className="app-shell" style={{ "--preview-width": `${previewWidth}px` } as CSSProperties}>
     <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="切换导航"><Menu size={20} /></button>
-    <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-      <div className="brand"><div className="brand-icon"><Layers3 size={21} /></div><div><strong>知行传播</strong><small>AI CONTENT STUDIO</small></div></div>
-      <div className="workspace-label">工作空间</div><div className="workspace-card"><div className="workspace-avatar">企</div><div><strong>企业增长工作台</strong><small>本地演示空间</small></div></div>
-      <div className="nav-label">创作工作区</div><nav className="side-nav" aria-label="主导航"><Link className="selected" href="/"><WandSparkles size={18} /> 多平台创作 <ChevronRight size={16} /></Link><Link href="/calendar"><CalendarDays size={18} /> 发布日历</Link><Link href="/analytics"><BarChart3 size={18} /> 传播数据看板</Link><Link href="/settings"><Settings2 size={18} /> 设置</Link></nav>
-      <div className="nav-label secondary-label">资源管理</div><nav className="side-nav"><a href="#knowledge"><BookOpen size={18} /> 企业素材库</a><a href="#reference"><FileText size={18} /> 创作指南</a></nav>
-      <div className="sidebar-bottom"><div className="quota-card"><div className="quota-head"><span><Sparkles size={15} /> {isDevelopment ? "开发验收模式" : "企业试用额度"}</span><strong>{isDevelopment ? "不限次数" : `${quota}/20 次`}</strong></div>{!isDevelopment && <div className="quota-track"><div style={{ width: `${quota * 5}%` }} /></div>}<p>{isDevelopment ? "可反复生成内容，优先核验界面。" : "生成一次，解锁各平台的双版本创意。"}</p></div><div className="sidebar-help"><Settings2 size={16} /> 本地演示模式</div></div>
-    </aside>
+    <WorkspaceSidebar active="studio" enterpriseId={enterprise.id} isDevelopment={isDevelopment} open={sidebarOpen} quota={quota} />
     <main className="main-column"><header className="topbar"><div className="breadcrumb">工作空间 <ChevronRight size={14} /> <strong>多平台创作</strong></div><div className="topbar-right"><span className="topbar-search"><Search size={15} /> 搜索功能</span><span className="topbar-user">主</span></div></header>
       <div className="studio-content"><div className="page-intro"><div><div className="intro-kicker"><Sparkles size={15} /> AI 驱动的内容增长工作台</div><h1>让好故事，抵达每一个平台<span>✦</span></h1><p>汇集企业知识，一次创作，多平台精准转译。</p></div><div className="intro-decoration"><span>创意</span><span>策略</span><span>增长</span></div></div>
       <section className="section-card enterprise-section"><div className="section-heading"><div><span className="step">01</span><h2>选择企业案例</h2></div><p>一键载入行业背景与品牌素材</p></div><div className="enterprise-grid">{allEnterprises.map((item) => <button key={item.id} onClick={() => changeEnterprise(item.id)} className={`enterprise-tile ${item.id === enterpriseId ? "active" : ""}`}><span className="enterprise-symbol" style={{ backgroundColor: `${item.accent}33`, color: item.accent }}>{item.name.slice(0, 1)}</span><span><strong>{item.name}</strong><small>{item.industry}</small></span>{item.id === enterpriseId && <Check size={17} />}{customEnterprises.some((custom) => custom.id === item.id) && <span className="tile-remove" role="button" aria-label={`删除自定义企业 ${item.name}`} title="删除该自定义企业" onClick={(event) => { event.stopPropagation(); removeCustomEnterprise(item.id); }}><X size={13} /></span>}</button>)}<button type="button" className="enterprise-tile add-tile" onClick={() => setShowEnterpriseForm(true)} aria-haspopup="dialog"><span className="enterprise-symbol"><Plus size={17} /></span><span><strong>新增企业类型</strong><small>自定义行业与品牌背景</small></span></button></div><div className="case-note"><span className="case-dot" style={{ backgroundColor: enterprise.accent }} /> {enterprise.location} · {enterprise.tagline}</div></section>
